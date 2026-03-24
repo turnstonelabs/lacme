@@ -33,9 +33,12 @@ class HookDNSProvider:
         self._create_command = self._normalize_command(create_command)
         self._delete_command = self._normalize_command(delete_command)
         self._timeout = timeout
-        # Fail fast if the executables don't exist
+        # Validate commands are non-empty and executables exist
         for label, cmd in [("create", self._create_command), ("delete", self._delete_command)]:
-            if cmd and shutil.which(cmd[0]) is None:
+            if not cmd:
+                msg = f"Hook {label} command must be non-empty"
+                raise ValueError(msg)
+            if shutil.which(cmd[0]) is None:
                 msg = f"Hook {label} command not found: {cmd[0]!r}"
                 raise FileNotFoundError(msg)
 

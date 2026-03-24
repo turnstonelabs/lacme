@@ -96,6 +96,11 @@ class _AsyncRunner:
         self._runner: asyncio.Runner | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
+        self._is_open = False
+
+    @property
+    def is_open(self) -> bool:
+        return self._is_open
 
     def open(self) -> None:
         """Start the runner or background loop thread."""
@@ -105,25 +110,38 @@ class _AsyncRunner:
             # No running loop — use Runner mode.
             self._runner = asyncio.Runner()
             self._runner.__enter__()
+            self._is_open = True
             return
 
         # A loop is already running — use thread mode.
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
         self._thread.start()
+        self._is_open = True
+
+    def _check_open(self) -> None:
+        """Raise if the runner is not open.  Call BEFORE creating coroutines."""
+        if not self._is_open:
+            msg = "_AsyncRunner is not open"
+            raise RuntimeError(msg)
 
     def run(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run *coro* and return its result, blocking the calling thread."""
+        if not self._is_open:
+            coro.close()  # Prevent RuntimeWarning for un-awaited coroutine
+            msg = "_AsyncRunner is not open"
+            raise RuntimeError(msg)
         if self._runner is not None:
             return self._runner.run(coro)
         if self._loop is not None and self._thread is not None:
             future = asyncio.run_coroutine_threadsafe(coro, self._loop)
             return future.result()
-        msg = "_AsyncRunner is not open"
+        msg = "_AsyncRunner is in an inconsistent state"
         raise RuntimeError(msg)
 
     def close(self) -> None:
         """Shut down the runner or background loop thread."""
+        self._is_open = False
         if self._runner is not None:
             self._runner.__exit__(None, None, None)
             self._runner = None

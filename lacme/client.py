@@ -59,9 +59,8 @@ _VALID_REVOCATION_REASONS = set(RevocationReason)
 
 def _validate_revocation_reason(reason: int) -> None:
     if reason not in _VALID_REVOCATION_REASONS:
-        msg = (
-            f"Invalid revocation reason {reason}. Valid values: {sorted(_VALID_REVOCATION_REASONS)}"
-        )
+        valid = ", ".join(f"{r.name}({int(r)})" for r in sorted(_VALID_REVOCATION_REASONS, key=int))
+        msg = f"Invalid revocation reason {reason}. Valid values: {valid}"
         raise ValueError(msg)
 
 
