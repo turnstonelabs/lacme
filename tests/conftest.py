@@ -34,12 +34,28 @@ def account_key() -> ec.EllipticCurvePrivateKey:
 def make_test_bundle() -> Callable[..., CertBundle]:
     """Factory fixture that generates a self-signed cert and returns a CertBundle."""
 
-    def _make(domain: str = "example.com") -> CertBundle:
+    def _make(
+        domain: str = "example.com",
+        *,
+        expires_at: datetime.datetime | None = None,
+        issued_at: datetime.datetime | None = None,
+    ) -> CertBundle:
         from lacme._types import CertBundle as _CertBundle
 
         key = ec.generate_private_key(ec.SECP256R1())
         now = datetime.datetime.now(datetime.UTC)
-        expires = now + datetime.timedelta(days=90)
+        effective_issued = issued_at if issued_at is not None else now
+        effective_expires = (
+            expires_at
+            if expires_at is not None
+            else now
+            + datetime.timedelta(
+                days=90,
+            )
+        )
+        # Ensure not_valid_before < not_valid_after for the X.509 builder,
+        # even when effective_expires is in the past (e.g. testing expired certs).
+        cert_not_before = min(now, effective_expires - datetime.timedelta(days=1))
         subject = Name([NameAttribute(NameOID.COMMON_NAME, domain)])
         cert = (
             CertificateBuilder()
@@ -47,8 +63,8 @@ def make_test_bundle() -> Callable[..., CertBundle]:
             .issuer_name(subject)
             .public_key(key.public_key())
             .serial_number(random_serial_number())
-            .not_valid_before(now)
-            .not_valid_after(expires)
+            .not_valid_before(cert_not_before)
+            .not_valid_after(effective_expires)
             .add_extension(SubjectAlternativeName([DNSName(domain)]), critical=False)
             .sign(key, hashes.SHA256())
         )
@@ -60,8 +76,8 @@ def make_test_bundle() -> Callable[..., CertBundle]:
             cert_pem=cert_pem,
             fullchain_pem=cert_pem,
             key_pem=key_pem,
-            issued_at=now,
-            expires_at=expires,
+            issued_at=effective_issued,
+            expires_at=effective_expires,
         )
 
     return _make

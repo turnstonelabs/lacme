@@ -17,7 +17,9 @@ from lacme.crypto import (
     generate_ec_key,
     jwk_thumbprint,
     jws_encode,
+    jws_encode_hmac,
     key_authorization,
+    pem_to_der_certificate,
     private_key_from_pem,
     private_key_to_pem,
     public_key_to_jwk,
@@ -377,3 +379,174 @@ class TestSignES256:
         s = int.from_bytes(sig[32:], "big")
         der_sig = encode_dss_signature(r, s)
         key.public_key().verify(der_sig, data, ec.ECDSA(SHA256()))
+
+
+# ---------------------------------------------------------------------------
+# JWS nonce=None (for key rollover inner JWS)
+# ---------------------------------------------------------------------------
+
+
+class TestJWSNonceOptional:
+    def test_nonce_omitted_from_header(self) -> None:
+        key = generate_ec_key()
+        jws = jws_encode(
+            b'{"test": true}',
+            key,
+            url="https://acme.example/key-change",
+        )
+        header = json.loads(b64url_decode(jws["protected"]))
+        assert "nonce" not in header
+        assert header["alg"] == "ES256"
+        assert header["url"] == "https://acme.example/key-change"
+
+    def test_nonce_included_when_provided(self) -> None:
+        key = generate_ec_key()
+        jws = jws_encode(
+            b"{}",
+            key,
+            nonce="test-nonce",
+            url="https://acme.example/test",
+        )
+        header = json.loads(b64url_decode(jws["protected"]))
+        assert header["nonce"] == "test-nonce"
+
+
+# ---------------------------------------------------------------------------
+# JWS HMAC (for External Account Binding)
+# ---------------------------------------------------------------------------
+
+
+class TestJWSEncodeHMAC:
+    def test_structure(self) -> None:
+        jws = jws_encode_hmac(
+            b'{"kty":"EC"}',
+            b"secret-key",
+            kid="external-kid",
+            url="https://acme.example/new-account",
+        )
+        assert set(jws.keys()) == {"protected", "payload", "signature"}
+
+    def test_protected_header(self) -> None:
+        jws = jws_encode_hmac(
+            b'{"kty":"EC"}',
+            b"secret-key",
+            kid="ext-123",
+            url="https://acme.example/new-account",
+        )
+        header = json.loads(b64url_decode(jws["protected"]))
+        assert header == {
+            "alg": "HS256",
+            "kid": "ext-123",
+            "url": "https://acme.example/new-account",
+        }
+        # Must NOT contain nonce or jwk
+        assert "nonce" not in header
+        assert "jwk" not in header
+
+    def test_payload_roundtrip(self) -> None:
+        payload = b'{"kty":"EC","crv":"P-256"}'
+        jws = jws_encode_hmac(
+            payload,
+            b"key",
+            kid="k",
+            url="https://example.com",
+        )
+        decoded = b64url_decode(jws["payload"])
+        assert decoded == payload
+
+    def test_signature_verifiable(self) -> None:
+        import hmac
+
+        mac_key = b"test-mac-key-1234"
+        payload = b'{"test": true}'
+        jws = jws_encode_hmac(
+            payload,
+            mac_key,
+            kid="kid-1",
+            url="https://acme.example/new-account",
+        )
+        signing_input = (jws["protected"] + "." + jws["payload"]).encode("ascii")
+        expected_sig = hmac.digest(mac_key, signing_input, "sha256")
+        actual_sig = b64url_decode(jws["signature"])
+        assert actual_sig == expected_sig
+
+    def test_unsupported_alg_raises(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported MAC algorithm"):
+            jws_encode_hmac(b"{}", b"key", alg="HS512", kid="k", url="u")
+
+
+# ---------------------------------------------------------------------------
+# PEM to DER certificate conversion
+# ---------------------------------------------------------------------------
+
+
+class TestPEMToDER:
+    def test_roundtrip(self) -> None:
+        import datetime
+
+        from cryptography.hazmat.primitives import hashes as _hashes
+        from cryptography.hazmat.primitives.serialization import Encoding
+        from cryptography.x509 import (
+            CertificateBuilder,
+            DNSName,
+            Name,
+            NameAttribute,
+            SubjectAlternativeName,
+            load_der_x509_certificate,
+            random_serial_number,
+        )
+        from cryptography.x509.oid import NameOID
+
+        key = generate_ec_key()
+        now = datetime.datetime.now(datetime.UTC)
+        subject = Name([NameAttribute(NameOID.COMMON_NAME, "test.com")])
+        cert = (
+            CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(subject)
+            .public_key(key.public_key())
+            .serial_number(random_serial_number())
+            .not_valid_before(now)
+            .not_valid_after(now + datetime.timedelta(days=1))
+            .add_extension(SubjectAlternativeName([DNSName("test.com")]), critical=False)
+            .sign(key, _hashes.SHA256())
+        )
+        pem = cert.public_bytes(Encoding.PEM)
+        der = pem_to_der_certificate(pem)
+        # Verify DER can be parsed back
+        loaded = load_der_x509_certificate(der)
+        assert loaded.subject == cert.subject
+
+    def test_accepts_str(self) -> None:
+        import datetime
+
+        from cryptography.hazmat.primitives import hashes as _hashes
+        from cryptography.hazmat.primitives.serialization import Encoding
+        from cryptography.x509 import (
+            CertificateBuilder,
+            Name,
+            NameAttribute,
+            random_serial_number,
+        )
+        from cryptography.x509.oid import NameOID
+
+        key = generate_ec_key()
+        now = datetime.datetime.now(datetime.UTC)
+        cert = (
+            CertificateBuilder()
+            .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, "t.com")]))
+            .issuer_name(Name([NameAttribute(NameOID.COMMON_NAME, "t.com")]))
+            .public_key(key.public_key())
+            .serial_number(random_serial_number())
+            .not_valid_before(now)
+            .not_valid_after(now + datetime.timedelta(days=1))
+            .sign(key, _hashes.SHA256())
+        )
+        pem_str = cert.public_bytes(Encoding.PEM).decode("ascii")
+        der = pem_to_der_certificate(pem_str)
+        assert isinstance(der, bytes)
+        assert der[0] == 0x30  # DER SEQUENCE tag
+
+    def test_invalid_pem_raises(self) -> None:
+        with pytest.raises(ValueError):
+            pem_to_der_certificate(b"not a PEM")

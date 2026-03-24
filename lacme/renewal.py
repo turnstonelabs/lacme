@@ -1,0 +1,139 @@
+"""Automatic certificate renewal.
+
+Provides :class:`RenewalManager` which periodically checks stored certificates
+and re-issues any that are approaching expiry.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import datetime
+import inspect
+import logging
+import random
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from lacme._types import CertBundle
+    from lacme.client import Client
+    from lacme.store import Store
+
+logger = logging.getLogger("lacme")
+
+
+class RenewalManager:
+    """Periodically check stored certificates and renew expiring ones.
+
+    Args:
+        client: ACME client used to issue replacement certificates.
+        store: Certificate store to enumerate and persist certificates.
+        interval_hours: Hours between renewal sweeps.
+        days_before_expiry: Renew certificates expiring within this many days.
+        challenge_type: ACME challenge type for issuance (e.g. ``"http-01"``).
+        on_renewed: Optional callback invoked with each renewed :class:`CertBundle`.
+            May be synchronous or asynchronous.
+        max_jitter_seconds: Maximum random jitter (seconds) added to each sleep
+            interval to avoid thundering-herd renewals.
+    """
+
+    def __init__(
+        self,
+        *,
+        client: Client,
+        store: Store,
+        interval_hours: float = 12.0,
+        days_before_expiry: int = 30,
+        challenge_type: str = "http-01",
+        on_renewed: Callable[[CertBundle], Any] | None = None,
+        max_jitter_seconds: float = 600.0,
+    ) -> None:
+        self._client = client
+        self._store = store
+        self._interval_hours = interval_hours
+        self._days_before_expiry = days_before_expiry
+        self._challenge_type = challenge_type
+        self._on_renewed = on_renewed
+        self._max_jitter_seconds = max_jitter_seconds
+        self._task: asyncio.Task[None] | None = None
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    async def run(self) -> None:
+        """Run the renewal loop forever until cancelled."""
+        while True:
+            try:
+                await self.check_and_renew()
+            except Exception:
+                logger.exception("Renewal sweep failed")
+
+            jitter = random.uniform(0, self._max_jitter_seconds)  # noqa: S311
+            delay = self._interval_hours * 3600.0 + jitter
+            await asyncio.sleep(delay)
+
+    async def check_and_renew(self) -> list[CertBundle]:
+        """Single pass: check all certificates and renew expiring ones."""
+        now = datetime.datetime.now(datetime.UTC)
+        bundles = self._store.list_certs()
+        renewed: list[CertBundle] = []
+
+        for bundle in bundles:
+            if not self._needs_renewal(bundle, now):
+                continue
+
+            try:
+                logger.info(
+                    "Renewing certificate for %s (expires %s)",
+                    bundle.domain,
+                    bundle.expires_at.isoformat(),
+                )
+                new_bundle = await self._client.issue(
+                    list(bundle.domains),
+                    challenge_type=self._challenge_type,
+                )
+                # Explicitly save to our store (Client may have a different one)
+                self._store.save_cert(new_bundle)
+                renewed.append(new_bundle)
+            except Exception:
+                logger.exception("Failed to renew certificate for %s", bundle.domain)
+                continue
+
+            if self._on_renewed is not None:
+                try:
+                    result = self._on_renewed(new_bundle)
+                    if inspect.isawaitable(result):
+                        await result
+                except Exception:
+                    logger.exception("on_renewed callback failed for %s", bundle.domain)
+
+        return renewed
+
+    def _needs_renewal(self, bundle: CertBundle, now: datetime.datetime) -> bool:
+        """Return ``True`` if *bundle* expires within the configured threshold."""
+        threshold = now + datetime.timedelta(days=self._days_before_expiry)
+        return bundle.expires_at <= threshold
+
+    def start(self) -> asyncio.Task[None]:
+        """Create and return a background task running the renewal loop.
+
+        Raises:
+            RuntimeError: If a renewal task is already running.
+        """
+        if self._task is not None and not self._task.done():
+            msg = "Renewal task is already running"
+            raise RuntimeError(msg)
+        self._task = asyncio.get_running_loop().create_task(self.run())
+        return self._task
+
+    async def stop(self) -> None:
+        """Cancel the background renewal task and wait for it to finish."""
+        if self._task is None:
+            return
+        self._task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._task
+        self._task = None
