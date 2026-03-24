@@ -16,6 +16,13 @@ from lacme.errors import (
     BadNonceError,
     RateLimitedError,
 )
+from lacme.events import (
+    CertificateExpiring,
+    CertificateIssued,
+    CertificateRenewed,
+    ChallengeFailed,
+    EventDispatcher,
+)
 from lacme.models import (
     Account,
     Authorization,
@@ -39,12 +46,17 @@ __all__ = [
     "Authorization",
     "BadNonceError",
     "CertBundle",
+    "CertificateExpiring",
+    "CertificateIssued",
+    "CertificateRenewed",
     "Challenge",
+    "ChallengeFailed",
     "ChallengeHandler",
     "Client",
     "DNS01Handler",
     "DNSProvider",
     "Directory",
+    "EventDispatcher",
     "FileStore",
     "Identifier",
     "LETSENCRYPT_DIRECTORY",

@@ -32,8 +32,21 @@ test = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "hypothesis>=6.100",
+    "anyio>=4.0",
 ]
 aws = ["boto3>=1.34"]
+starlette = [
+    "starlette>=0.27",
+]
+fastapi = [
+    "fastapi>=0.100",
+]
+prometheus = [
+    "prometheus-client>=0.20",
+]
+
+[project.scripts]
+lacme = "lacme.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/turnstonelabs/lacme"
@@ -71,6 +84,14 @@ no_implicit_optional = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["lacme.ext_fastapi", "lacme.starlette"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["fastapi", "fastapi.*", "starlette", "starlette.*"]
+ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["lacme"]

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from lacme._types import CertBundle
     from lacme.challenges import ChallengeHandler
+    from lacme.events import EventDispatcher
     from lacme.models import Account, Authorization, Challenge, Directory, Order
     from lacme.store import Store
 
@@ -186,6 +187,7 @@ class SyncClient:
         poll_interval: float = 2.0,
         eab_kid: str | None = None,
         eab_hmac_key: str | None = None,
+        event_dispatcher: EventDispatcher | None = None,
     ) -> None:
         self._runner = _AsyncRunner()
         self._runner.open()
@@ -202,6 +204,7 @@ class SyncClient:
                 poll_interval=poll_interval,
                 eab_kid=eab_kid,
                 eab_hmac_key=eab_hmac_key,
+                event_dispatcher=event_dispatcher,
             )
         except Exception:
             self._runner.close()
