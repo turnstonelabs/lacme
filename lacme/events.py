@@ -145,9 +145,9 @@ class EventDispatcher:
 
         Callbacks detected as coroutine functions (via
         :func:`inspect.iscoroutinefunction`) are skipped with a warning.
-        Unlike :meth:`emit`, this method does **not** inspect return values
-        for awaitables — sync callbacks that return awaitables will have
-        those return values silently discarded.
+        Unlike :meth:`emit`, this method does **not** await return values.
+        If a sync callback accidentally returns a coroutine, it is closed
+        to prevent un-awaited coroutine warnings and a warning is logged.
         """
         self._log_event(event)
 
@@ -164,7 +164,17 @@ class EventDispatcher:
                 )
                 continue
             try:
-                cb(event)
+                result = cb(event)
+                if inspect.isawaitable(result):
+                    # Close un-awaited coroutines to prevent RuntimeWarning
+                    if hasattr(result, "close"):
+                        result.close()
+                    logger.warning(
+                        "Sync callback %r returned an awaitable in emit_sync for %s; "
+                        "result was discarded",
+                        cb,
+                        type(event).__name__,
+                    )
             except Exception:
                 logger.exception("Event callback %r failed for %s", cb, type(event).__name__)
 

@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
+import importlib
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
 import pytest
 
-from lacme.challenges.http01 import HTTP01Handler
-from lacme.ext_fastapi import acme_challenge_router, get_client_dependency, lifespan_issue
+# fastapi is an optional dependency — skip entire module if missing.
+# We use importlib because lacme.ext_fastapi shadows the name in some contexts.
+try:
+    importlib.import_module("fastapi")
+except ModuleNotFoundError:
+    pytest.skip("fastapi not installed", allow_module_level=True)
+
+import httpx  # noqa: E402
+
+from lacme.challenges.http01 import HTTP01Handler  # noqa: E402
+from lacme.ext_fastapi import (  # noqa: E402
+    acme_challenge_router,
+    get_client_dependency,
+    lifespan_issue,
+)
 
 # ---------------------------------------------------------------------------
 # Challenge router

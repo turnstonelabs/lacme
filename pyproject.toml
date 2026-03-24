@@ -90,7 +90,7 @@ module = ["lacme.ext_fastapi", "lacme.starlette"]
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = ["fastapi", "fastapi.*", "starlette", "starlette.*"]
+module = ["fastapi", "fastapi.*", "starlette", "starlette.*", "prometheus_client", "prometheus_client.*", "boto3", "boto3.*"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
