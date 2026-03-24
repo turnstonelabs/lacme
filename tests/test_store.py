@@ -227,12 +227,12 @@ class TestPathTraversal:
 
         store = FileStore(tmp_path)
         bundle = replace(make_test_bundle(), domain="../../../tmp/evil")
-        with pytest.raises(ValueError, match="path traversal"):
+        with pytest.raises(ValueError, match="Invalid domain name"):
             store.save_cert(bundle)
 
     def test_load_cert_path_traversal_rejected(self, tmp_path: Path) -> None:
         store = FileStore(tmp_path)
-        with pytest.raises(ValueError, match="path traversal"):
+        with pytest.raises(ValueError, match="Invalid domain name"):
             store.load_cert("../../../etc/passwd")
 
     def test_normal_domain_accepted(

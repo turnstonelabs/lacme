@@ -73,9 +73,15 @@ class FileStore:
         self._certs_dir = self._base / "certs"
 
     def _resolve_domain_dir(self, domain: str) -> Path:
-        """Resolve a domain directory path, rejecting path traversal."""
+        """Resolve a domain directory path, rejecting invalid names and traversal."""
         from pathlib import Path as _Path
 
+        if not domain:
+            msg = "Domain name must be non-empty"
+            raise ValueError(msg)
+        if any(sep in domain for sep in (os.sep, os.altsep) if sep):
+            msg = f"Invalid domain name (path separator): {domain!r}"
+            raise ValueError(msg)
         domain_dir = _Path(self._certs_dir / domain).resolve()
         if not domain_dir.is_relative_to(self._certs_dir.resolve()):
             msg = f"Invalid domain name (path traversal): {domain!r}"
@@ -218,14 +224,18 @@ def _atomic_write(path: Path, data: bytes, *, mode: int) -> None:
     atomic :func:`os.replace`, and :func:`os.fdopen` to handle
     partial writes safely.
     """
+    _has_fchmod = hasattr(os, "fchmod")
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)
             f.flush()
             os.fsync(f.fileno())
-            os.fchmod(f.fileno(), mode)
+            if _has_fchmod:
+                os.fchmod(f.fileno(), mode)
         os.replace(tmp, path)
+        if not _has_fchmod:
+            os.chmod(path, mode)
     except BaseException:
         with contextlib.suppress(OSError):
             os.unlink(tmp)

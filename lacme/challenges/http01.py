@@ -7,6 +7,7 @@ runs a minimal standalone HTTP server on port 80.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import re
 
@@ -29,6 +30,9 @@ class HTTP01Handler:
     # --- ChallengeHandler protocol ---
 
     async def provision(self, domain: str, token: str, key_authorization: str) -> None:
+        if not _TOKEN_RE.match(token):
+            msg = f"Invalid ACME token format: {token!r}"
+            raise ValueError(msg)
         logger.debug("Provisioning HTTP-01 for %s (token=%s…)", domain, token[:8])
         self._challenges[token] = key_authorization
 
@@ -121,5 +125,7 @@ class HTTP01Handler:
         ):
             pass
         finally:
+            with contextlib.suppress(ConnectionError, OSError):
+                await writer.drain()
             writer.close()
             await writer.wait_closed()

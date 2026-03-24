@@ -135,6 +135,7 @@ class Client:
             return self._nonces.pop()
         d = await self.directory()
         resp = await self._http.head(d.new_nonce)
+        resp.raise_for_status()
         self._harvest_nonce(resp)
         if self._nonces:
             return self._nonces.pop()
@@ -297,6 +298,9 @@ class Client:
         not_after: str | None = None,
     ) -> Order:
         """Create a new certificate order."""
+        if self._account_url is None:
+            msg = "No account URL — call create_account() first"
+            raise RuntimeError(msg)
         if isinstance(domains, str):
             domains = [domains]
         d = await self.directory()
@@ -528,7 +532,7 @@ class Client:
         import datetime
 
         from cryptography.hazmat.primitives import serialization
-        from cryptography.x509 import load_pem_x509_certificate
+        from cryptography.x509 import load_pem_x509_certificates
 
         from lacme._types import CertBundle as _CertBundle
 
@@ -606,8 +610,12 @@ class Client:
         fullchain_pem = fullchain_pem_str.encode("ascii")
         key_pem = crypto.private_key_to_pem(cert_key)
 
-        # Parse leaf cert from chain (use cryptography for robust PEM parsing)
-        cert_obj = load_pem_x509_certificate(fullchain_pem)
+        # Parse leaf cert from chain (first cert in PEM bundle)
+        certs = load_pem_x509_certificates(fullchain_pem)
+        if not certs:
+            msg = "Server returned empty certificate chain"
+            raise RuntimeError(msg)
+        cert_obj = certs[0]
         leaf_pem = cert_obj.public_bytes(serialization.Encoding.PEM)
         expires_at = cert_obj.not_valid_after_utc
         now = datetime.datetime.now(datetime.UTC)
