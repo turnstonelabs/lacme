@@ -318,7 +318,10 @@ class Client:
             payload,
             expected_status={201},
         )
-        url = resp.headers.get("location", "")
+        url = resp.headers.get("location")
+        if not url:
+            msg = "Server response for newOrder is missing required Location header"
+            raise RuntimeError(msg)
         return Order.from_dict(resp.json(), url=url)
 
     async def get_authorization(self, url: str) -> Authorization:
@@ -362,7 +365,10 @@ class Client:
             payload,
             expected_status={201},
         )
-        url = resp.headers.get("location", "")
+        url = resp.headers.get("location")
+        if not url:
+            msg = "Server response for newAuthz is missing required Location header"
+            raise RuntimeError(msg)
         return Authorization.from_dict(resp.json(), url=url)
 
     async def respond_to_challenge(self, challenge: Challenge) -> Challenge:

@@ -85,9 +85,9 @@ class HTTP01Handler:
 
             method, path = parts[0], parts[1]
 
-            # Drain remaining headers before responding (capped for safety)
+            # Drain remaining headers before responding (capped to limit slowloris)
             for _ in range(100):
-                header_line = await asyncio.wait_for(reader.readline(), timeout=10.0)
+                header_line = await asyncio.wait_for(reader.readline(), timeout=2.0)
                 if header_line in (b"\r\n", b"\n", b""):
                     break
 
