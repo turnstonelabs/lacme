@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 
     from lacme._types import CertBundle
     from lacme.challenges import ChallengeHandler
+    from lacme.events import EventDispatcher
     from lacme.store import Store
 
 logger = logging.getLogger("lacme")
@@ -86,10 +87,12 @@ class Client:
         poll_interval: float = _DEFAULT_POLL_INTERVAL,
         eab_kid: str | None = None,
         eab_hmac_key: str | None = None,
+        event_dispatcher: EventDispatcher | None = None,
     ) -> None:
         self._directory_url = directory_url
         self._account_key = account_key
         self._store = store
+        self._event_dispatcher = event_dispatcher
         self._contact: list[str] | None
         if isinstance(contact, str):
             self._contact = [contact]
@@ -757,7 +760,20 @@ class Client:
 
             # 4. Poll authorizations
             for authz in authzs:
-                await self.poll_authorization(authz.url)
+                try:
+                    await self.poll_authorization(authz.url)
+                except Exception as exc:
+                    if self._event_dispatcher is not None:
+                        from lacme.events import ChallengeFailed
+
+                        await self._event_dispatcher.emit(
+                            ChallengeFailed(
+                                domain=authz.identifier.value,
+                                challenge_type=challenge_type,
+                                error=str(exc),
+                            )
+                        )
+                    raise
 
             # 5. Confirm order reached "ready" before finalizing
             order = await self._poll_order_ready(order.url)
@@ -814,6 +830,18 @@ class Client:
         if self._store is not None:
             bundle = self._store.save_cert(bundle)
 
+        # 10. Emit event
+        if self._event_dispatcher is not None:
+            from lacme.events import CertificateIssued
+
+            await self._event_dispatcher.emit(
+                CertificateIssued(
+                    domain=bundle.domain,
+                    domains=bundle.domains,
+                    expires_at=bundle.expires_at,
+                )
+            )
+
         return bundle
 
     # --- Auto-renewal ---
@@ -843,5 +871,6 @@ class Client:
             interval_hours=interval_hours,
             days_before_expiry=days_before_expiry,
             on_renewed=on_renewed,
+            event_dispatcher=self._event_dispatcher,
         )
         return manager.start()

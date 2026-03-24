@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from lacme._types import CertBundle
     from lacme.client import Client
+    from lacme.events import EventDispatcher
     from lacme.store import Store
 
 logger = logging.getLogger("lacme")
@@ -49,6 +50,7 @@ class RenewalManager:
         challenge_type: str = "http-01",
         on_renewed: Callable[[CertBundle], Any] | None = None,
         max_jitter_seconds: float = 600.0,
+        event_dispatcher: EventDispatcher | None = None,
     ) -> None:
         self._client = client
         self._store = store
@@ -57,6 +59,7 @@ class RenewalManager:
         self._challenge_type = challenge_type
         self._on_renewed = on_renewed
         self._max_jitter_seconds = max_jitter_seconds
+        self._event_dispatcher = event_dispatcher
         self._task: asyncio.Task[None] | None = None
 
     # ------------------------------------------------------------------
@@ -85,6 +88,21 @@ class RenewalManager:
             if not self._needs_renewal(bundle, now):
                 continue
 
+            days_remaining = max(0, (bundle.expires_at - now).days)
+
+            # Emit expiring event
+            if self._event_dispatcher is not None:
+                from lacme.events import CertificateExpiring
+
+                await self._event_dispatcher.emit(
+                    CertificateExpiring(
+                        domain=bundle.domain,
+                        domains=bundle.domains,
+                        expires_at=bundle.expires_at,
+                        days_remaining=days_remaining,
+                    )
+                )
+
             try:
                 logger.info(
                     "Renewing certificate for %s (expires %s)",
@@ -101,6 +119,19 @@ class RenewalManager:
             except Exception:
                 logger.exception("Failed to renew certificate for %s", bundle.domain)
                 continue
+
+            # Emit renewed event
+            if self._event_dispatcher is not None:
+                from lacme.events import CertificateRenewed
+
+                await self._event_dispatcher.emit(
+                    CertificateRenewed(
+                        domain=new_bundle.domain,
+                        domains=new_bundle.domains,
+                        expires_at=new_bundle.expires_at,
+                        previous_expires_at=bundle.expires_at,
+                    )
+                )
 
             if self._on_renewed is not None:
                 try:
