@@ -10,10 +10,12 @@ import httpx
 import pytest
 
 from lacme.client import Client
-from lacme.crypto import b64url_decode, generate_ec_key
+from lacme.crypto import b64url_decode, b64url_encode, generate_ec_key
 from lacme.errors import (
+    ACMEServerError,
     ACMETimeoutError,
     ACMEValidationError,
+    AlreadyRevokedError,
     BadNonceError,
     MalformedError,
     RateLimitedError,
@@ -1201,3 +1203,464 @@ class TestPreAuthorization:
             await client.create_account()
             with pytest.raises(RuntimeError, match="does not support pre-authorization"):
                 await client.create_authorization("example.com")
+
+
+# ---------------------------------------------------------------------------
+# Revocation
+# ---------------------------------------------------------------------------
+
+
+def _make_test_cert_pem() -> tuple[bytes, EllipticCurvePrivateKey]:
+    """Generate a self-signed certificate and return (cert_pem_bytes, private_key)."""
+    import datetime
+
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec as ec_mod
+    from cryptography.hazmat.primitives.serialization import Encoding
+    from cryptography.x509 import (
+        CertificateBuilder,
+        DNSName,
+        Name,
+        NameAttribute,
+        SubjectAlternativeName,
+        random_serial_number,
+    )
+    from cryptography.x509.oid import NameOID
+
+    cert_key = ec_mod.generate_private_key(ec_mod.SECP256R1())
+    now = datetime.datetime.now(datetime.UTC)
+    subject = Name([NameAttribute(NameOID.COMMON_NAME, "example.com")])
+    cert = (
+        CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(cert_key.public_key())
+        .serial_number(random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=90))
+        .add_extension(SubjectAlternativeName([DNSName("example.com")]), critical=False)
+        .sign(cert_key, hashes.SHA256())
+    )
+    cert_pem = cert.public_bytes(Encoding.PEM)
+    return cert_pem, cert_key
+
+
+class TestRevocation:
+    @pytest.mark.anyio
+    async def test_revoke_with_account_key(self, account_key: EllipticCurvePrivateKey) -> None:
+        cert_pem, _cert_key = _make_test_cert_pem()
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/revoke-cert":
+                captured_payload.update(
+                    json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                )
+                return _json_response({})
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            await client.revoke(cert_pem)
+
+        assert "certificate" in captured_payload
+        # Verify the certificate field is base64url-encoded DER
+        from lacme.crypto import pem_to_der_certificate
+
+        expected_der = pem_to_der_certificate(cert_pem)
+        assert captured_payload["certificate"] == b64url_encode(expected_der)
+
+    @pytest.mark.anyio
+    async def test_revoke_with_reason(self, account_key: EllipticCurvePrivateKey) -> None:
+        cert_pem, _cert_key = _make_test_cert_pem()
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/revoke-cert":
+                captured_payload.update(
+                    json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                )
+                return _json_response({})
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            await client.revoke(cert_pem, reason=1)
+
+        assert captured_payload["reason"] == 1
+
+    @pytest.mark.anyio
+    async def test_revoke_invalid_reason(self, account_key: EllipticCurvePrivateKey) -> None:
+        cert_pem, _cert_key = _make_test_cert_pem()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            with pytest.raises(ValueError, match="Invalid revocation reason 2"):
+                await client.revoke(cert_pem, reason=2)
+
+    @pytest.mark.anyio
+    async def test_revoke_already_revoked(self, account_key: EllipticCurvePrivateKey) -> None:
+        cert_pem, _cert_key = _make_test_cert_pem()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/revoke-cert":
+                return _problem_response("alreadyRevoked", "Certificate already revoked")
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            with pytest.raises(AlreadyRevokedError):
+                await client.revoke(cert_pem)
+
+    @pytest.mark.anyio
+    async def test_revoke_with_cert_key(self, account_key: EllipticCurvePrivateKey) -> None:
+        """Sign with cert key — JWS should have jwk header, not kid."""
+        cert_pem, cert_key = _make_test_cert_pem()
+        captured_header: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-nonce":
+                return httpx.Response(200, headers={"replay-nonce": _next_nonce()})
+            if request.url.path == "/revoke-cert":
+                jws = json.loads(request.content)
+                captured_header.update(json.loads(b64url_decode(jws["protected"])))
+                return _json_response({})
+            return httpx.Response(404)
+
+        # No create_account needed for cert-key revocation
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.revoke_with_cert_key(cert_pem, cert_key)
+
+        assert "jwk" in captured_header
+        assert "kid" not in captured_header
+
+    @pytest.mark.anyio
+    async def test_revoke_accepts_str_pem(self, account_key: EllipticCurvePrivateKey) -> None:
+        cert_pem_bytes, _cert_key = _make_test_cert_pem()
+        cert_pem_str = cert_pem_bytes.decode("ascii")
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/revoke-cert":
+                captured_payload.update(
+                    json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                )
+                return _json_response({})
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            await client.revoke(cert_pem_str)
+
+        assert "certificate" in captured_payload
+        # Should produce same result as bytes
+        from lacme.crypto import pem_to_der_certificate
+
+        expected_der = pem_to_der_certificate(cert_pem_bytes)
+        assert captured_payload["certificate"] == b64url_encode(expected_der)
+
+
+# ---------------------------------------------------------------------------
+# Key Rollover
+# ---------------------------------------------------------------------------
+
+
+class TestKeyRollover:
+    @pytest.mark.anyio
+    async def test_rollover_key_success(self, account_key: EllipticCurvePrivateKey) -> None:
+        """Verify inner/outer JWS structure: outer has kid+nonce, inner has jwk + no nonce."""
+        new_key = generate_ec_key()
+        captured_outer_header: dict[str, Any] = {}
+        captured_inner_jws: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/key-change":
+                outer_jws = json.loads(request.content)
+                captured_outer_header.update(json.loads(b64url_decode(outer_jws["protected"])))
+                # The outer payload is the inner JWS (a dict)
+                inner_jws = json.loads(b64url_decode(outer_jws["payload"]))
+                captured_inner_jws.update(inner_jws)
+                return _json_response({})
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            await client.rollover_key(new_key)
+
+        # Outer JWS: must have kid and nonce (standard account-key signed)
+        assert "kid" in captured_outer_header
+        assert "nonce" in captured_outer_header
+        assert captured_outer_header["kid"] == "https://acme.test/acct/1"
+
+        # Inner JWS: must have jwk (new key), no nonce
+        inner_header = json.loads(b64url_decode(captured_inner_jws["protected"]))
+        assert "jwk" in inner_header
+        assert "nonce" not in inner_header
+
+        # Inner payload: must have "account" and "oldKey"
+        inner_payload = json.loads(b64url_decode(captured_inner_jws["payload"]))
+        assert inner_payload["account"] == "https://acme.test/acct/1"
+        assert "oldKey" in inner_payload
+
+    @pytest.mark.anyio
+    async def test_rollover_generates_key(self, account_key: EllipticCurvePrivateKey) -> None:
+        """Call rollover_key with no args — verify key changed."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/key-change":
+                return _json_response({})
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            original_key = client._account_key
+            await client.rollover_key()
+            assert client._account_key is not original_key
+            assert client._account_key is not None
+
+    @pytest.mark.anyio
+    async def test_rollover_saves_to_store(self, account_key: EllipticCurvePrivateKey) -> None:
+        store = MemoryStore()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/key-change":
+                return _json_response({})
+            return httpx.Response(404)
+
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(
+            directory_url="https://acme.test/directory",
+            account_key=account_key,
+            http_client=http,
+            store=store,
+        )
+        async with client:
+            await client.create_account()
+            new_key = generate_ec_key()
+            await client.rollover_key(new_key)
+
+        stored_key = store.load_account_key()
+        assert stored_key is not None
+        # Compare public key numbers to verify it is the new key
+        assert stored_key.public_key().public_numbers() == new_key.public_key().public_numbers()
+
+    @pytest.mark.anyio
+    async def test_rollover_failure_preserves_key(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/key-change":
+                return _problem_response("serverInternal", "key change failed", status=500)
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            original_key = client._account_key
+            with pytest.raises(ACMEServerError):
+                await client.rollover_key()
+            # Key should remain unchanged after failure
+            assert client._account_key is original_key
+
+    @pytest.mark.anyio
+    async def test_rollover_no_account_raises(self, account_key: EllipticCurvePrivateKey) -> None:
+        client = _make_client(account_key, httpx.MockTransport(lambda r: httpx.Response(404)))
+        async with client:
+            with pytest.raises(RuntimeError, match="No account URL"):
+                await client.rollover_key()
+
+
+# ---------------------------------------------------------------------------
+# External Account Binding
+# ---------------------------------------------------------------------------
+
+
+class TestExternalAccountBinding:
+    @pytest.mark.anyio
+    async def test_create_account_with_eab(self, account_key: EllipticCurvePrivateKey) -> None:
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                captured_payload.update(
+                    json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                )
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account(
+                eab_kid="kid-12345",
+                eab_hmac_key=b64url_encode(b"test-hmac-secret-key-value-here!"),
+            )
+
+        assert "externalAccountBinding" in captured_payload
+        eab = captured_payload["externalAccountBinding"]
+        # EAB is a JWS: verify protected header has alg=HS256 and kid=eab_kid
+        eab_header = json.loads(b64url_decode(eab["protected"]))
+        assert eab_header["alg"] == "HS256"
+        assert eab_header["kid"] == "kid-12345"
+
+    @pytest.mark.anyio
+    async def test_eab_from_constructor(self, account_key: EllipticCurvePrivateKey) -> None:
+        """EAB params from Client constructor should be used by create_account()."""
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                captured_payload.update(
+                    json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                )
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            return httpx.Response(404)
+
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(
+            directory_url="https://acme.test/directory",
+            account_key=account_key,
+            http_client=http,
+            eab_kid="constructor-kid",
+            eab_hmac_key=b64url_encode(b"constructor-hmac-secret-key!!!!!"),
+        )
+        async with client:
+            # Call create_account without EAB params — should use constructor values
+            await client.create_account()
+
+        assert "externalAccountBinding" in captured_payload
+        eab = captured_payload["externalAccountBinding"]
+        eab_header = json.loads(b64url_decode(eab["protected"]))
+        assert eab_header["kid"] == "constructor-kid"
+
+    @pytest.mark.anyio
+    async def test_eab_kid_without_key_raises(self, account_key: EllipticCurvePrivateKey) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            with pytest.raises(ValueError, match="Both eab_kid and eab_hmac_key must be provided"):
+                await client.create_account(eab_kid="orphan-kid")
+
+    @pytest.mark.anyio
+    async def test_no_eab_no_binding(self, account_key: EllipticCurvePrivateKey) -> None:
+        captured_payload: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                captured_payload.update(
+                    json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                )
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            return httpx.Response(404)
+
+        client = _make_client(account_key, httpx.MockTransport(handler))
+        async with client:
+            await client.create_account()
+
+        assert "externalAccountBinding" not in captured_payload

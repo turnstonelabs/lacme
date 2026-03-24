@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 from typing import Any, Self
 
 # ---------------------------------------------------------------------------
@@ -50,6 +50,19 @@ class ChallengeStatus(StrEnum):
 class IdentifierType(StrEnum):
     DNS = "dns"
     IP = "ip"
+
+
+class RevocationReason(IntEnum):
+    """Certificate revocation reason codes (RFC 5280 §5.3.1).
+
+    Only codes applicable for ACME client-initiated revocation are included.
+    """
+
+    UNSPECIFIED = 0
+    KEY_COMPROMISE = 1
+    AFFILIATION_CHANGED = 3
+    SUPERSEDED = 4
+    CESSATION_OF_OPERATION = 5
 
 
 # ---------------------------------------------------------------------------

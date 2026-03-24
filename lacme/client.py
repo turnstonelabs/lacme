@@ -33,9 +33,11 @@ from lacme.models import (
     IdentifierType,
     Order,
     OrderStatus,
+    RevocationReason,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import TracebackType
 
     from cryptography.hazmat.primitives.asymmetric import ec
@@ -52,6 +54,15 @@ LETSENCRYPT_STAGING_DIRECTORY = "https://acme-staging-v02.api.letsencrypt.org/di
 _DEFAULT_POLL_TIMEOUT: float = 300.0
 _DEFAULT_POLL_INTERVAL: float = 2.0
 _MAX_BAD_NONCE_RETRIES = 1
+_VALID_REVOCATION_REASONS = set(RevocationReason)
+
+
+def _validate_revocation_reason(reason: int) -> None:
+    if reason not in _VALID_REVOCATION_REASONS:
+        msg = (
+            f"Invalid revocation reason {reason}. Valid values: {sorted(_VALID_REVOCATION_REASONS)}"
+        )
+        raise ValueError(msg)
 
 
 class Client:
@@ -74,6 +85,8 @@ class Client:
         http_client: httpx.AsyncClient | None = None,
         poll_timeout: float = _DEFAULT_POLL_TIMEOUT,
         poll_interval: float = _DEFAULT_POLL_INTERVAL,
+        eab_kid: str | None = None,
+        eab_hmac_key: str | None = None,
     ) -> None:
         self._directory_url = directory_url
         self._account_key = account_key
@@ -86,6 +99,8 @@ class Client:
         self._challenge_handler = challenge_handler
         self._poll_timeout = poll_timeout
         self._poll_interval = poll_interval
+        self._eab_kid = eab_kid
+        self._eab_hmac_key = eab_hmac_key
 
         if http_client is not None:
             self._http = http_client
@@ -149,6 +164,41 @@ class Client:
 
     # --- JWS request ---
 
+    async def _raw_signed_request(
+        self,
+        url: str,
+        payload: dict[str, Any] | bytes | None,
+        *,
+        signing_key: ec.EllipticCurvePrivateKey,
+        nonce: str,
+        kid: str | None = None,
+        expected_status: set[int] | None = None,
+    ) -> httpx.Response:
+        """Low-level JWS-signed POST.  No badNonce retry."""
+        if payload is None:
+            raw_payload = b""
+        elif isinstance(payload, dict):
+            raw_payload = json.dumps(payload).encode()
+        else:
+            raw_payload = payload
+
+        jws_body = crypto.jws_encode(
+            raw_payload,
+            signing_key,
+            nonce=nonce,
+            url=url,
+            kid=kid,
+        )
+
+        resp = await self._http.post(
+            url,
+            content=json.dumps(jws_body).encode(),
+            headers={"content-type": "application/jose+json"},
+        )
+        self._harvest_nonce(resp)
+        self._check_response(resp, expected_status)
+        return resp
+
     async def _signed_request(
         self,
         url: str,
@@ -156,45 +206,26 @@ class Client:
         *,
         expected_status: set[int] | None = None,
     ) -> httpx.Response:
-        """Send a JWS-signed POST.  Auto-retries once on badNonce."""
+        """Account-key signed POST with badNonce retry."""
+        if self._account_key is None:
+            msg = "No account key — call _ensure_account_key() first"
+            raise RuntimeError(msg)
         for attempt in range(_MAX_BAD_NONCE_RETRIES + 1):
             nonce = await self._get_nonce()
-            kid = self._account_url
-
-            if payload is None:
-                raw_payload = b""
-            elif isinstance(payload, dict):
-                raw_payload = json.dumps(payload).encode()
-            else:
-                raw_payload = payload
-
-            if self._account_key is None:
-                msg = "No account key — call _ensure_account_key() first"
-                raise RuntimeError(msg)
-            jws_body = crypto.jws_encode(
-                raw_payload,
-                self._account_key,
-                nonce=nonce,
-                url=url,
-                kid=kid,
-            )
-
-            resp = await self._http.post(
-                url,
-                content=json.dumps(jws_body).encode(),
-                headers={"content-type": "application/jose+json"},
-            )
-            self._harvest_nonce(resp)
-
             try:
-                self._check_response(resp, expected_status)
+                return await self._raw_signed_request(
+                    url,
+                    payload,
+                    signing_key=self._account_key,
+                    nonce=nonce,
+                    kid=self._account_url,
+                    expected_status=expected_status,
+                )
             except BadNonceError:
                 if attempt < _MAX_BAD_NONCE_RETRIES:
                     logger.debug("badNonce — retrying with fresh nonce")
                     continue
                 raise
-
-            return resp
 
         # Unreachable, but satisfies mypy
         msg = "Exhausted badNonce retries"
@@ -244,10 +275,16 @@ class Client:
         contact: list[str] | None = None,
         terms_of_service_agreed: bool = True,
         only_return_existing: bool = False,
+        eab_kid: str | None = None,
+        eab_hmac_key: str | None = None,
     ) -> Account:
         """Create or find an existing ACME account.
 
         Sets the internal account URL for subsequent requests.
+
+        For CAs requiring External Account Binding (e.g. ZeroSSL), pass
+        *eab_kid* and *eab_hmac_key* (base64url-encoded).  These fall
+        back to the values provided at ``Client`` construction time.
         """
         await self._ensure_account_key()
         d = await self.directory()
@@ -259,6 +296,26 @@ class Client:
             payload["contact"] = effective_contact
         if only_return_existing:
             payload["onlyReturnExisting"] = True
+
+        # External Account Binding (RFC 8555 §7.3.4)
+        eff_eab_kid = eab_kid if eab_kid is not None else self._eab_kid
+        eff_eab_key = eab_hmac_key if eab_hmac_key is not None else self._eab_hmac_key
+        if (eff_eab_kid is None) != (eff_eab_key is None):
+            msg = "Both eab_kid and eab_hmac_key must be provided together"
+            raise ValueError(msg)
+        if eff_eab_kid is not None and eff_eab_key is not None:
+            if self._account_key is None:
+                msg = "No account key for EAB"
+                raise RuntimeError(msg)
+            account_jwk = crypto.public_key_to_jwk(self._account_key.public_key())
+            eab_payload = json.dumps(account_jwk, separators=(",", ":")).encode()
+            mac_key = crypto.b64url_decode(eff_eab_key)
+            payload["externalAccountBinding"] = crypto.jws_encode_hmac(
+                eab_payload,
+                mac_key,
+                kid=eff_eab_kid,
+                url=d.new_account,
+            )
 
         # newAccount uses JWK, not KID — temporarily clear account_url
         saved_url = self._account_url
@@ -287,6 +344,61 @@ class Client:
             expected_status={200},
         )
         return Account.from_dict(resp.json(), url=self._account_url)
+
+    async def rollover_key(
+        self,
+        new_key: ec.EllipticCurvePrivateKey | None = None,
+    ) -> None:
+        """Roll over the account key (RFC 8555 §7.3.5).
+
+        Replaces the current account key with *new_key* (generated if ``None``).
+        On success the new key is stored if a store was provided.
+        """
+        if self._account_url is None:
+            msg = "No account URL — call create_account() first"
+            raise RuntimeError(msg)
+        if self._account_key is None:
+            msg = "No account key"
+            raise RuntimeError(msg)
+        if new_key is None:
+            new_key = crypto.generate_ec_key()
+
+        d = await self.directory()
+        old_jwk = crypto.public_key_to_jwk(self._account_key.public_key())
+
+        # Inner JWS: signed by NEW key, JWK header, no nonce
+        inner_payload = json.dumps(
+            {"account": self._account_url, "oldKey": old_jwk},
+            separators=(",", ":"),
+        ).encode()
+        inner_jws = crypto.jws_encode(
+            inner_payload,
+            new_key,
+            url=d.key_change,
+            # nonce omitted — RFC 8555 §7.3.5
+            # kid omitted — inner JWS uses JWK of new key
+        )
+
+        # Outer JWS: standard account-key signed request
+        await self._signed_request(
+            d.key_change,
+            inner_jws,
+            expected_status={200},
+        )
+
+        # Success — update in-memory state (server has accepted the new key)
+        self._account_key = new_key
+        if self._store is not None:
+            try:
+                self._store.save_account_key(new_key)
+            except Exception:
+                logger.critical(
+                    "Account key rolled over on server but FAILED to save locally. "
+                    "The new key exists only in memory. Back up immediately.",
+                    exc_info=True,
+                )
+                raise
+            logger.info("Account key rolled over and saved to store")
 
     # --- Order lifecycle ---
 
@@ -523,6 +635,69 @@ class Client:
         resp = await self._signed_request(url, None, expected_status={200})
         return resp.text
 
+    # --- Revocation ---
+
+    async def revoke(
+        self,
+        cert_pem: bytes | str,
+        *,
+        reason: int | None = None,
+    ) -> None:
+        """Revoke a certificate using the account key (RFC 8555 §7.6).
+
+        Args:
+            cert_pem: PEM-encoded certificate to revoke.
+            reason: Optional revocation reason code
+                (see :class:`~lacme.models.RevocationReason`).
+        """
+        d = await self.directory()
+        payload = self._build_revocation_payload(cert_pem, reason)
+        await self._signed_request(d.revoke_cert, payload, expected_status={200})
+
+    async def revoke_with_cert_key(
+        self,
+        cert_pem: bytes | str,
+        cert_key: ec.EllipticCurvePrivateKey,
+        *,
+        reason: int | None = None,
+    ) -> None:
+        """Revoke a certificate using its own key pair (RFC 8555 §7.6).
+
+        Does not require an ACME account.  The JWS is signed with
+        *cert_key* and uses a JWK header (not KID).
+        """
+        d = await self.directory()
+        payload = self._build_revocation_payload(cert_pem, reason)
+        for attempt in range(_MAX_BAD_NONCE_RETRIES + 1):
+            nonce = await self._get_nonce()
+            try:
+                await self._raw_signed_request(
+                    d.revoke_cert,
+                    payload,
+                    signing_key=cert_key,
+                    nonce=nonce,
+                    kid=None,
+                    expected_status={200},
+                )
+                return
+            except BadNonceError:
+                if attempt < _MAX_BAD_NONCE_RETRIES:
+                    logger.debug("badNonce on revoke_with_cert_key — retrying")
+                    continue
+                raise
+
+    @staticmethod
+    def _build_revocation_payload(
+        cert_pem: bytes | str,
+        reason: int | None,
+    ) -> dict[str, Any]:
+        cert_der = crypto.pem_to_der_certificate(cert_pem)
+        payload: dict[str, Any] = {"certificate": crypto.b64url_encode(cert_der)}
+        if reason is not None:
+            _validate_revocation_reason(reason)
+            payload["reason"] = reason
+        return payload
+
     # --- High-level orchestration ---
 
     async def issue(
@@ -641,3 +816,33 @@ class Client:
             bundle = self._store.save_cert(bundle)
 
         return bundle
+
+    # --- Auto-renewal ---
+
+    async def auto_renew(
+        self,
+        *,
+        interval_hours: float = 12.0,
+        days_before_expiry: int = 30,
+        on_renewed: Callable[[CertBundle], Any] | None = None,
+    ) -> asyncio.Task[None]:
+        """Start a background renewal task.  Requires a store.
+
+        Returns the :class:`asyncio.Task` running the renewal loop.
+
+        Raises:
+            ValueError: If no store was provided to the client.
+        """
+        if self._store is None:
+            msg = "auto_renew() requires a store"
+            raise ValueError(msg)
+        from lacme.renewal import RenewalManager
+
+        manager = RenewalManager(
+            client=self,
+            store=self._store,
+            interval_hours=interval_hours,
+            days_before_expiry=days_before_expiry,
+            on_renewed=on_renewed,
+        )
+        return manager.start()

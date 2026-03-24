@@ -18,6 +18,7 @@ from lacme.models import (
     Order,
     OrderStatus,
     Problem,
+    RevocationReason,
     SubProblem,
 )
 
@@ -434,3 +435,24 @@ class TestFrozen:
         )
         with pytest.raises(AttributeError):
             order.status = OrderStatus.VALID  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# RevocationReason
+# ---------------------------------------------------------------------------
+
+
+class TestRevocationReason:
+    def test_values(self) -> None:
+        assert RevocationReason.UNSPECIFIED == 0
+        assert RevocationReason.KEY_COMPROMISE == 1
+        assert RevocationReason.AFFILIATION_CHANGED == 3
+        assert RevocationReason.SUPERSEDED == 4
+        assert RevocationReason.CESSATION_OF_OPERATION == 5
+
+    def test_is_int(self) -> None:
+        assert isinstance(RevocationReason.KEY_COMPROMISE, int)
+
+    def test_usable_as_int(self) -> None:
+        # Can be passed directly where int is expected
+        assert RevocationReason.SUPERSEDED + 0 == 4

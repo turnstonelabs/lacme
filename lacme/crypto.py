@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac as _hmac
 import json
 from typing import Any
 
@@ -182,13 +183,14 @@ def jws_encode(
     payload: bytes,
     key: ec.EllipticCurvePrivateKey,
     *,
-    nonce: str,
+    nonce: str | None = None,
     url: str,
     kid: str | None = None,
 ) -> dict[str, Any]:
     """Create a JWS in Flattened JSON Serialization.
 
-    Protected header always contains ``alg`` (ES256), ``nonce``, ``url``.
+    Protected header always contains ``alg`` (ES256) and ``url``.
+    ``nonce`` is included when provided (omit for key rollover inner JWS).
     If *kid* is ``None`` the header includes ``jwk`` (for ``newAccount``).
     Otherwise it includes ``kid`` (for all subsequent requests).
 
@@ -196,7 +198,9 @@ def jws_encode(
     field in the returned dict will be the empty string ``""``.
     """
     # Build protected header
-    header: dict[str, Any] = {"alg": "ES256", "nonce": nonce, "url": url}
+    header: dict[str, Any] = {"alg": "ES256", "url": url}
+    if nonce is not None:
+        header["nonce"] = nonce
     if kid is not None:
         header["kid"] = kid
     else:
@@ -228,3 +232,71 @@ def _sign_es256(signing_input: bytes, key: ec.EllipticCurvePrivateKey) -> bytes:
     der_sig = key.sign(signing_input, ec.ECDSA(hashes.SHA256()))
     r, s = utils.decode_dss_signature(der_sig)
     return r.to_bytes(32, "big") + s.to_bytes(32, "big")
+
+
+# ---------------------------------------------------------------------------
+# JWS HMAC (for External Account Binding)
+# ---------------------------------------------------------------------------
+
+
+def jws_encode_hmac(
+    payload: bytes,
+    mac_key: bytes,
+    *,
+    alg: str = "HS256",
+    kid: str,
+    url: str,
+) -> dict[str, Any]:
+    """Create a JWS in Flattened JSON Serialization using HMAC.
+
+    Used for External Account Binding (RFC 8555 §7.3.4).
+    Protected header contains ``alg``, ``kid``, and ``url`` only.
+
+    Args:
+        payload: Raw bytes to sign (typically a serialized JWK).
+        mac_key: Decoded HMAC key (raw bytes, not base64url-encoded).
+        alg: MAC algorithm identifier.  Only ``"HS256"`` is supported.
+        kid: External account key identifier (from the CA).
+        url: ACME ``newAccount`` URL.
+
+    Raises:
+        ValueError: If *alg* is not ``"HS256"``.
+    """
+    if alg != "HS256":
+        msg = f"Unsupported MAC algorithm: {alg!r} (only HS256 is supported)"
+        raise ValueError(msg)
+
+    header: dict[str, Any] = {"alg": alg, "kid": kid, "url": url}
+    protected_b64 = b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    payload_b64 = b64url_encode(payload)
+
+    signing_input = (protected_b64 + "." + payload_b64).encode("ascii")
+    signature = _hmac.digest(mac_key, signing_input, "sha256")
+
+    return {
+        "protected": protected_b64,
+        "payload": payload_b64,
+        "signature": b64url_encode(signature),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Certificate DER conversion
+# ---------------------------------------------------------------------------
+
+
+def pem_to_der_certificate(cert_pem: bytes | str) -> bytes:
+    """Convert a PEM-encoded certificate to DER format.
+
+    If the PEM contains a chain, only the first (leaf) certificate
+    is converted.
+    """
+    from cryptography.x509 import load_pem_x509_certificates
+
+    if isinstance(cert_pem, str):
+        cert_pem = cert_pem.encode("ascii")
+    certs = load_pem_x509_certificates(cert_pem)
+    if not certs:
+        msg = "No certificates found in PEM data"
+        raise ValueError(msg)
+    return certs[0].public_bytes(serialization.Encoding.DER)
