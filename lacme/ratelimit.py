@@ -114,11 +114,12 @@ def _default_registered_domain(domain: str) -> str:
     ``www.example.com`` → ``example.com``,
     ``foo.co.uk`` → ``foo.co.uk``.
     """
-    # Strip leading wildcard prefix
+    # Strip leading wildcard prefix and trailing dot
     if domain.startswith("*."):
         domain = domain[2:]
+    domain = domain.rstrip(".")
 
-    parts = domain.rstrip(".").split(".")
+    parts = domain.split(".")
     if len(parts) <= 2:  # noqa: PLR2004
         return domain
 
@@ -248,14 +249,18 @@ class FileRateLimitStore:
         except (json.JSONDecodeError, OSError):
             logger.warning("Corrupt or unreadable rate limit file %s; starting fresh", self._path)
             return []
-        return [
-            IssuanceRecord(
-                registered_domain=entry["registered_domain"],
-                domains=tuple(entry["domains"]),
-                issued_at=datetime.datetime.fromisoformat(entry["issued_at"]),
-            )
-            for entry in raw
-        ]
+        try:
+            return [
+                IssuanceRecord(
+                    registered_domain=entry["registered_domain"],
+                    domains=tuple(entry["domains"]),
+                    issued_at=datetime.datetime.fromisoformat(entry["issued_at"]),
+                )
+                for entry in raw
+            ]
+        except (TypeError, KeyError, ValueError):
+            logger.warning("Corrupt rate limit data in %s; starting fresh", self._path)
+            return []
 
     def _save(self, records: list[IssuanceRecord]) -> None:
         """Atomically write records, pruning entries older than 7 days."""
@@ -321,7 +326,7 @@ class RateLimitTracker:
     @classmethod
     def from_file_store(cls, file_store: FileStore, **kwargs: Any) -> RateLimitTracker:
         """Create tracker using same base directory as *file_store*."""
-        rate_store = FileRateLimitStore(base=file_store._base)  # noqa: SLF001
+        rate_store = FileRateLimitStore(base=file_store.base)
         return cls(rate_store, **kwargs)
 
     def check(self, domains: list[str]) -> RateLimitStatus:
