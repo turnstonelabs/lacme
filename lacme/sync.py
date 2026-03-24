@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from lacme.challenges import ChallengeHandler
     from lacme.events import EventDispatcher
     from lacme.models import Account, Authorization, Challenge, Directory, Order
+    from lacme.ratelimit import RateLimitStatus, RateLimitTracker
     from lacme.store import Store
 
 T = TypeVar("T")
@@ -120,12 +121,6 @@ class _AsyncRunner:
         self._thread.start()
         self._is_open = True
 
-    def _check_open(self) -> None:
-        """Raise if the runner is not open.  Call BEFORE creating coroutines."""
-        if not self._is_open:
-            msg = "_AsyncRunner is not open"
-            raise RuntimeError(msg)
-
     def run(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run *coro* and return its result, blocking the calling thread."""
         if not self._is_open:
@@ -188,6 +183,7 @@ class SyncClient:
         eab_kid: str | None = None,
         eab_hmac_key: str | None = None,
         event_dispatcher: EventDispatcher | None = None,
+        rate_limit_tracker: RateLimitTracker | None = None,
     ) -> None:
         self._runner = _AsyncRunner()
         self._runner.open()
@@ -205,6 +201,7 @@ class SyncClient:
                 eab_kid=eab_kid,
                 eab_hmac_key=eab_hmac_key,
                 event_dispatcher=event_dispatcher,
+                rate_limit_tracker=rate_limit_tracker,
             )
         except Exception:
             self._runner.close()
@@ -364,9 +361,18 @@ class SyncClient:
         domains: str | list[str],
         *,
         challenge_type: str = "http-01",
+        challenge_map: dict[str, tuple[str, ChallengeHandler]] | None = None,
     ) -> CertBundle:
         """Issue a certificate for the given domain(s)."""
-        return self._runner.run(self._client.issue(domains, challenge_type=challenge_type))
+        return self._runner.run(
+            self._client.issue(domains, challenge_type=challenge_type, challenge_map=challenge_map)
+        )
+
+    # --- Rate limits ---
+
+    def check_rate_limits(self, domains: str | list[str]) -> RateLimitStatus:
+        """Check if issuing for *domains* would exceed rate limits."""
+        return self._client.check_rate_limits(domains)
 
     # --- Revocation ---
 

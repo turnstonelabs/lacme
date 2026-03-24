@@ -1036,7 +1036,7 @@ class TestIssueNoHandler:
             http_client=http,
         )
         async with client:
-            with pytest.raises(ValueError, match="No challenge_handler"):
+            with pytest.raises(ValueError, match="No challenge handler"):
                 await client.issue("example.com")
 
 

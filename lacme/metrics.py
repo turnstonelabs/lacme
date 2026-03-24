@@ -52,8 +52,6 @@ class MetricsCollector:
             registry=reg,
         )
 
-        self._dispatcher = dispatcher
-
         from lacme.events import (
             CertificateExpiring,
             CertificateIssued,

@@ -447,6 +447,9 @@ requires-dist = [
 ]
 provides-extras = ["test", "aws", "starlette", "fastapi", "prometheus"]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "packaging"
 version = "26.0"
