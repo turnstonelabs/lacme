@@ -44,6 +44,12 @@ fastapi = [
 prometheus = [
     "prometheus-client>=0.20",
 ]
+docs = [
+    "mkdocs-gen-files>=0.5",
+    "mkdocs-literate-nav>=0.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.24",
+]
 
 [project.scripts]
 lacme = "lacme.cli:main"

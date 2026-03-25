@@ -1,0 +1,79 @@
+site_name: lacme
+site_description: Modern, async-native Python ACME client library
+site_url: https://turnstonelabs.github.io/lacme/
+repo_url: https://github.com/turnstonelabs/lacme
+repo_name: turnstonelabs/lacme
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            show_root_heading: true
+            show_root_toc_entry: false
+            heading_level: 3
+            docstring_style: google
+            show_signature_annotations: true
+            separate_signature: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Guides:
+    - ACME Client: guides/acme-client.md
+    - Private CA & mTLS: guides/private-ca.md
+    - DNS Providers: guides/dns-providers.md
+    - Framework Integration: guides/frameworks.md
+    - CLI Reference: guides/cli.md
+    - Observability: guides/observability.md
+  - API Reference:
+    - Client: api/client.md
+    - Certificate Authority: api/ca.md
+    - ACME Responder: api/acme-server.md
+    - Store: api/store.md
+    - Challenges: api/challenges.md
+    - Crypto: api/crypto.md
+    - Events: api/events.md
+    - mTLS: api/mtls.md
+    - Rate Limiting: api/ratelimit.md
+    - Models: api/models.md
+    - Errors: api/errors.md
+    - Sync Client: api/sync.md
+    - Testing: api/testing.md
+    - CLI: api/cli.md
+    - Metrics: api/metrics.md
+  - Examples: examples.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
