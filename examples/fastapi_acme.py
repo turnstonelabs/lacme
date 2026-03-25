@@ -14,8 +14,12 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, Response
@@ -36,6 +40,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     task = asyncio.create_task(_issue_certificate())
     yield
     task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
 
 
 async def _issue_certificate() -> None:

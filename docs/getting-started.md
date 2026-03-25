@@ -92,12 +92,13 @@ from lacme.challenges.http01 import HTTP01Handler
 
 handler = HTTP01Handler()
 
-client = SyncClient(
+with SyncClient(
     directory_url=LETSENCRYPT_STAGING_DIRECTORY,
     store=store,
     contact="mailto:you@example.com",
     challenge_handler=handler,
-)
+) as client:
+    bundle = client.issue("example.com")
 ```
 
 ### 3. Issue the certificate

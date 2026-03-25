@@ -28,6 +28,11 @@ theme:
 
 plugins:
   - search
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
   - mkdocstrings:
       handlers:
         python:
@@ -50,22 +55,7 @@ nav:
     - Framework Integration: guides/frameworks.md
     - CLI Reference: guides/cli.md
     - Observability: guides/observability.md
-  - API Reference:
-    - Client: api/client.md
-    - Certificate Authority: api/ca.md
-    - ACME Responder: api/acme-server.md
-    - Store: api/store.md
-    - Challenges: api/challenges.md
-    - Crypto: api/crypto.md
-    - Events: api/events.md
-    - mTLS: api/mtls.md
-    - Rate Limiting: api/ratelimit.md
-    - Models: api/models.md
-    - Errors: api/errors.md
-    - Sync Client: api/sync.md
-    - Testing: api/testing.md
-    - CLI: api/cli.md
-    - Metrics: api/metrics.md
+  - API Reference: api/
   - Examples: examples.md
 
 markdown_extensions:

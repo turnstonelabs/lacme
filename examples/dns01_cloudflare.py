@@ -64,7 +64,7 @@ async def main(base_domain: str) -> None:
     ) as client:
         bundle = await client.issue(domains, challenge_type="dns-01")
 
-    print(f"\nCertificate issued successfully!")  # noqa: T201
+    print("\nCertificate issued successfully!")  # noqa: T201
     print(f"  Domain:    {bundle.domain}")  # noqa: T201
     print(f"  SANs:      {', '.join(bundle.domains)}")  # noqa: T201
     print(f"  Expires:   {bundle.expires_at.isoformat()}")  # noqa: T201
