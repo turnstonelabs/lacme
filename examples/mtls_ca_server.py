@@ -10,8 +10,8 @@ Run:
     pip install lacme uvicorn starlette
     python examples/mtls_ca_server.py
 
-Service nodes then use:
-    Client(directory_url="http://localhost:8443/acme/directory", ...)
+Service nodes then use (for local testing over HTTP):
+    Client(directory_url="http://localhost:8443/acme/directory", allow_insecure=True, ...)
 """
 
 from __future__ import annotations

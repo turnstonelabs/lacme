@@ -226,7 +226,13 @@ class EventDispatcher:
         for key, value in fields.items():
             if hasattr(value, "isoformat"):
                 fields[key] = value.isoformat()
-        identifier = fields.get("domain") or fields.get("name") or fields.get("cn") or ""
+        identifier = (
+            fields.get("domain")
+            or fields.get("name")
+            or fields.get("cn")
+            or fields.get("registered_domain")
+            or ""
+        )
         logger.info(
             "%s: %s",
             event_name,

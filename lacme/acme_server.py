@@ -126,6 +126,8 @@ class ACMEResponder:
         self._authz_counter = 0
         self._cert_counter = 0
 
+        # threading.Lock is used instead of asyncio.Lock because all locked
+        # sections are short dict mutations (no I/O or await).
         self._lock = threading.Lock()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -134,7 +136,6 @@ class ACMEResponder:
             return
 
         path = scope.get("path", "")
-        method = scope.get("method", "GET")
 
         # Strip root_path prefix from path if the framework already included it.
         # The path we route on is relative to our mount point.
@@ -151,10 +152,8 @@ class ACMEResponder:
             return
 
         if path == "/new-nonce":
-            if method == "HEAD":
-                await self._send_json(send, status=200, body={}, headers=extra_headers)
-            else:
-                await self._send_json(send, status=204, body={}, headers=extra_headers)
+            # RFC 8555 §7.2: both HEAD and POST return 200 with Replay-Nonce header
+            await self._send_json(send, status=200, body={}, headers=extra_headers)
             return
 
         if path == "/new-account":
@@ -168,7 +167,7 @@ class ACMEResponder:
             return
 
         if path.startswith("/authz/"):
-            raw = await self._read_body(receive)
+            _ = await self._read_body(receive)  # consume body
             await self._handle_authz(send, path, base_url, extra_headers)
             return
 
@@ -183,7 +182,7 @@ class ACMEResponder:
             return
 
         if path.startswith("/order/"):
-            raw = await self._read_body(receive)
+            _ = await self._read_body(receive)  # consume body
             await self._handle_order(send, path, base_url, extra_headers)
             return
 
@@ -197,7 +196,7 @@ class ACMEResponder:
             return
 
         if path == "/revoke-cert":
-            raw = await self._read_body(receive)
+            _ = await self._read_body(receive)  # consume body
             await self._handle_revoke(send, extra_headers)
             return
 
@@ -581,10 +580,12 @@ class ACMEResponder:
 
     async def _read_body(self, receive: Receive) -> bytes:
         """Read the full request body from ASGI receive."""
-        body = b""
+        body = bytearray()
         while True:
             message = await receive()
-            body += message.get("body", b"")
+            chunk = message.get("body", b"")
+            if chunk:
+                body.extend(chunk)
             if len(body) > self._MAX_BODY_SIZE:
                 msg = "Request body too large"
                 raise ValueError(msg)

@@ -36,6 +36,7 @@ async def main() -> None:
     async with Client(
         directory_url=CA_SERVER,
         # ca_bundle=ROOT_CA_PEM,  # Uncomment if CA serves over HTTPS
+        allow_insecure=True,  # Allow HTTP for local testing
         store=store,
         challenge_handler=handler,
     ) as client:

@@ -83,6 +83,9 @@ class CertificateAuthority:
         ``store.load_ca("root")``), loads it.  Otherwise generates a
         new self-signed root.
         """
+        event_cn: str = cn
+        event_expires: datetime.datetime | None = None
+
         with self._lock:
             # Try loading from store first.
             if self._store is not None:
@@ -103,66 +106,67 @@ class CertificateAuthority:
                         msg = f"Expected EC private key, got {type(raw_key).__name__}"
                         raise CertificateAuthorityError(msg)
                     self._root_key = raw_key
-                    cn_val = self._root_cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[
+                    cn_attr = self._root_cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[
                         0
                     ].value
-                    self._emit_initialized(
-                        cn=str(cn_val),
-                        expires_at=self._root_cert.not_valid_after_utc,
+                    event_cn = str(cn_attr)
+                    event_expires = self._root_cert.not_valid_after_utc
+
+            if self._root_cert is None:
+                # Generate new root CA.
+                from lacme.crypto import generate_ec_key
+
+                key = generate_ec_key()
+                now = datetime.datetime.now(datetime.UTC)
+                not_valid_after = now + datetime.timedelta(days=validity_days)
+
+                subject = Name([NameAttribute(NameOID.COMMON_NAME, cn)])
+                cert = (
+                    CertificateBuilder()
+                    .subject_name(subject)
+                    .issuer_name(subject)
+                    .public_key(key.public_key())
+                    .serial_number(random_serial_number())
+                    .not_valid_before(now)
+                    .not_valid_after(not_valid_after)
+                    .add_extension(
+                        BasicConstraints(ca=True, path_length=None),
+                        critical=True,
                     )
-                    return
-
-            # Generate new root CA.
-            from lacme.crypto import generate_ec_key
-
-            key = generate_ec_key()
-            now = datetime.datetime.now(datetime.UTC)
-            not_valid_after = now + datetime.timedelta(days=validity_days)
-
-            subject = Name([NameAttribute(NameOID.COMMON_NAME, cn)])
-            cert = (
-                CertificateBuilder()
-                .subject_name(subject)
-                .issuer_name(subject)
-                .public_key(key.public_key())
-                .serial_number(random_serial_number())
-                .not_valid_before(now)
-                .not_valid_after(not_valid_after)
-                .add_extension(
-                    BasicConstraints(ca=True, path_length=None),
-                    critical=True,
+                    .add_extension(
+                        KeyUsage(
+                            digital_signature=False,
+                            content_commitment=False,
+                            key_encipherment=False,
+                            data_encipherment=False,
+                            key_agreement=False,
+                            key_cert_sign=True,
+                            crl_sign=True,
+                            encipher_only=False,
+                            decipher_only=False,
+                        ),
+                        critical=True,
+                    )
+                    .add_extension(
+                        SubjectKeyIdentifier.from_public_key(key.public_key()),
+                        critical=False,
+                    )
+                    .sign(key, hashes.SHA256())
                 )
-                .add_extension(
-                    KeyUsage(
-                        digital_signature=False,
-                        content_commitment=False,
-                        key_encipherment=False,
-                        data_encipherment=False,
-                        key_agreement=False,
-                        key_cert_sign=True,
-                        crl_sign=True,
-                        encipher_only=False,
-                        decipher_only=False,
-                    ),
-                    critical=True,
-                )
-                .add_extension(
-                    SubjectKeyIdentifier.from_public_key(key.public_key()),
-                    critical=False,
-                )
-                .sign(key, hashes.SHA256())
-            )
 
-            self._root_cert = cert
-            self._root_key = key
+                self._root_cert = cert
+                self._root_key = key
+                event_expires = not_valid_after
 
-            # Persist if store is available.
-            if self._store is not None:
-                cert_pem = cert.public_bytes(Encoding.PEM)
-                key_pem = key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
-                self._store.save_ca("root", cert_pem, key_pem)
+                # Persist if store is available.
+                if self._store is not None:
+                    cert_pem = cert.public_bytes(Encoding.PEM)
+                    key_pem = key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+                    self._store.save_ca("root", cert_pem, key_pem)
 
-            self._emit_initialized(cn=cn, expires_at=not_valid_after)
+        # Emit event outside the lock to avoid deadlocks with user callbacks.
+        if event_expires is not None:
+            self._emit_initialized(cn=event_cn, expires_at=event_expires)
 
     def issue(
         self,

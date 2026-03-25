@@ -67,6 +67,8 @@ def client_ssl_context(
         _load_cert_chain(ctx, cert_pem, key_pem)
     if ca_cert_pem is not None:
         _load_verify_locations(ctx, ca_cert_pem)
+    else:
+        ctx.load_default_certs()
     return ctx
 
 
@@ -126,9 +128,12 @@ def _ensure_path(pem: PemInput) -> _TempPath:
     try:
         if _HAS_FCHMOD:
             os.fchmod(fd, 0o600)
-        os.write(fd, pem)
-        os.close(fd)
+        with os.fdopen(fd, "wb") as f:
+            f.write(pem)
     except BaseException:
+        # os.fdopen may not have been reached (e.g. fchmod failed),
+        # so close fd if still open.  If fdopen already closed it,
+        # os.close raises EBADF which is suppressed.
         with contextlib.suppress(OSError):
             os.close(fd)
         with contextlib.suppress(OSError):
