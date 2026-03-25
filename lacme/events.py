@@ -64,13 +64,30 @@ class ChallengeFailed:
     error: str
 
 
-Event = CertificateIssued | CertificateRenewed | CertificateExpiring | ChallengeFailed
+@dataclass(frozen=True, slots=True)
+class RateLimitWarning:
+    """Emitted when certificate issuance is approaching a rate limit."""
+
+    registered_domain: str
+    current_count: int
+    limit: int
+    window_hours: int
+
+
+Event = (
+    CertificateIssued
+    | CertificateRenewed
+    | CertificateExpiring
+    | ChallengeFailed
+    | RateLimitWarning
+)
 
 _EVENT_NAMES: dict[type[Event], str] = {
     CertificateIssued: "certificate_issued",
     CertificateRenewed: "certificate_renewed",
     CertificateExpiring: "certificate_expiring",
     ChallengeFailed: "challenge_failed",
+    RateLimitWarning: "rate_limit_warning",
 }
 
 

@@ -15,6 +15,7 @@ from lacme.errors import (
     ACMEValidationError,
     BadNonceError,
     RateLimitedError,
+    RateLimitPreventedError,
 )
 from lacme.events import (
     CertificateExpiring,
@@ -22,6 +23,7 @@ from lacme.events import (
     CertificateRenewed,
     ChallengeFailed,
     EventDispatcher,
+    RateLimitWarning,
 )
 from lacme.models import (
     Account,
@@ -32,6 +34,7 @@ from lacme.models import (
     Order,
     RevocationReason,
 )
+from lacme.ratelimit import RateLimitTracker
 from lacme.renewal import RenewalManager
 from lacme.store import FileStore, MemoryStore, Store
 from lacme.sync import SyncChallengeHandler, SyncClient
@@ -64,6 +67,9 @@ __all__ = [
     "MemoryStore",
     "Order",
     "RateLimitedError",
+    "RateLimitPreventedError",
+    "RateLimitTracker",
+    "RateLimitWarning",
     "RenewalManager",
     "RevocationReason",
     "Store",

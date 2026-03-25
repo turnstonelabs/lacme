@@ -47,6 +47,7 @@ class _MockAuthorization:
     status: str = "pending"
     token: str = ""
     challenge_url: str = ""
+    dns_challenge_url: str = ""
     challenge_status: str = "pending"
 
 
@@ -106,7 +107,7 @@ class MockACMEServer:
     def validate_challenge(self, challenge_url: str) -> None:
         """Manually validate a challenge (when ``auto_validate=False``)."""
         for authz in self._authorizations.values():
-            if authz.challenge_url == challenge_url:
+            if authz.challenge_url == challenge_url or authz.dns_challenge_url == challenge_url:
                 authz.challenge_status = "valid"
                 authz.status = "valid"
                 return
@@ -249,6 +250,7 @@ class MockACMEServer:
                 domain=domain,
                 token=token,
                 challenge_url=chall_url,
+                dns_challenge_url=f"{chall_url}-dns",
             )
             self._authorizations[authz_url] = authz
             authz_urls.append(authz_url)
@@ -308,19 +310,22 @@ class MockACMEServer:
     ) -> httpx.Response:
         chall_url = f"{self._base_url}{path}"
 
-        # Find the authorization for this challenge
+        # Find the authorization for this challenge (HTTP-01 or DNS-01)
         for authz in self._authorizations.values():
-            if authz.challenge_url == chall_url:
+            is_http = authz.challenge_url == chall_url
+            is_dns = authz.dns_challenge_url == chall_url
+            if is_http or is_dns:
                 if self._auto_validate:
                     authz.challenge_status = "valid"
                     authz.status = "valid"
                 else:
                     authz.challenge_status = "processing"
 
+                chall_type = "dns-01" if is_dns else "http-01"
                 return httpx.Response(
                     200,
                     json={
-                        "type": "http-01",
+                        "type": chall_type,
                         "url": chall_url,
                         "token": authz.token,
                         "status": authz.challenge_status,

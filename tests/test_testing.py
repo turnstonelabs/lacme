@@ -83,6 +83,38 @@ class TestMockServerFullFlow:
 
         assert bundle.domains == ("example.com", "www.example.com")
 
+    @pytest.mark.anyio
+    async def test_mixed_challenge_types(self, server: MockACMEServer, account_key):
+        """Issue with per-domain challenge type overrides via challenge_map."""
+        import httpx
+
+        from lacme.challenges.http01 import HTTP01Handler
+        from lacme.client import Client
+
+        http_handler = HTTP01Handler()
+        dns_handler = HTTP01Handler()  # use HTTP01Handler as mock for both
+        transport = server.as_transport()
+
+        async with (
+            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=http_handler,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            bundle = await client.issue(
+                ["example.com", "api.example.com"],
+                challenge_map={
+                    "api.example.com": ("dns-01", dns_handler),
+                },
+            )
+
+        assert bundle.domains == ("example.com", "api.example.com")
+
 
 # ---------------------------------------------------------------------------
 # Account operations

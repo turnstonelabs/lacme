@@ -72,6 +72,11 @@ class FileStore:
         self._base = _Path(base).expanduser().resolve()
         self._certs_dir = self._base / "certs"
 
+    @property
+    def base(self) -> Path:
+        """The resolved base directory path."""
+        return self._base
+
     def _resolve_domain_dir(self, domain: str) -> Path:
         """Resolve a domain directory path, rejecting invalid names and traversal."""
         from pathlib import Path as _Path

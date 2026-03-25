@@ -157,6 +157,10 @@ class ACMEStoreError(ACMEError):
     """Storage read/write failure."""
 
 
+class RateLimitPreventedError(ACMEError):
+    """Raised when local rate limit tracking prevents issuance."""
+
+
 # ---------------------------------------------------------------------------
 # Registry: ACME error short name → exception class
 # ---------------------------------------------------------------------------

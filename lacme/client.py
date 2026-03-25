@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from lacme._types import CertBundle
     from lacme.challenges import ChallengeHandler
     from lacme.events import EventDispatcher
+    from lacme.ratelimit import RateLimitStatus, RateLimitTracker
     from lacme.store import Store
 
 logger = logging.getLogger("lacme")
@@ -88,11 +89,13 @@ class Client:
         eab_kid: str | None = None,
         eab_hmac_key: str | None = None,
         event_dispatcher: EventDispatcher | None = None,
+        rate_limit_tracker: RateLimitTracker | None = None,
     ) -> None:
         self._directory_url = directory_url
         self._account_key = account_key
         self._store = store
         self._event_dispatcher = event_dispatcher
+        self._rate_limit_tracker = rate_limit_tracker
         self._contact: list[str] | None
         if isinstance(contact, str):
             self._contact = [contact]
@@ -707,10 +710,19 @@ class Client:
         domains: str | list[str],
         *,
         challenge_type: str = "http-01",
+        challenge_map: dict[str, tuple[str, ChallengeHandler]] | None = None,
     ) -> CertBundle:
         """Issue a certificate for the given domain(s).
 
         Orchestrates: account → order → authorize → finalize → download.
+
+        Args:
+            domains: Domain name(s) to include in the certificate.
+            challenge_type: Default challenge type for all domains.
+            challenge_map: Per-domain overrides mapping
+                ``{domain: (challenge_type, handler)}``.  Domains not in
+                the map fall back to *challenge_type* and the client's
+                default ``challenge_handler``.
         """
         import datetime
 
@@ -722,16 +734,32 @@ class Client:
         if isinstance(domains, str):
             domains = [domains]
 
+        # Build effective per-domain (challenge_type, handler) map
+        effective: dict[str, tuple[str, ChallengeHandler]] = {}
+        for d in domains:
+            if challenge_map and d in challenge_map:
+                effective[d] = challenge_map[d]
+            elif self._challenge_handler is not None:
+                effective[d] = (challenge_type, self._challenge_handler)
+            else:
+                msg = f"No challenge handler for domain {d!r}"
+                raise ValueError(msg)
+
         # Wildcard check
         for d in domains:
-            if d.startswith("*.") and challenge_type == "http-01":
+            ct, _ = effective[d]
+            if d.startswith("*.") and ct == "http-01":
                 msg = f"Wildcard domain {d!r} requires dns-01, not http-01"
                 raise ValueError(msg)
 
-        handler = self._challenge_handler
-        if handler is None:
-            msg = "No challenge_handler provided — required for issue()"
-            raise ValueError(msg)
+        # 0. Rate limit check
+        if self._rate_limit_tracker is not None:
+            from lacme.errors import RateLimitPreventedError
+
+            rl_status = self._rate_limit_tracker.check(domains)
+            if not rl_status.allowed:
+                msg = f"Rate limit would be exceeded: {'; '.join(rl_status.warnings)}"
+                raise RateLimitPreventedError(msg)
 
         # 1. Ensure account
         await self._ensure_account_key()
@@ -743,19 +771,21 @@ class Client:
 
         # 3. Solve challenges
         authzs = await self.get_authorizations(order)
-        provisioned: list[tuple[str, str]] = []
+        provisioned: list[tuple[str, str, ChallengeHandler]] = []
         try:
             for authz in authzs:
-                chall = authz.find_challenge(challenge_type)
+                domain_val = authz.identifier.value
+                ct, handler = effective[domain_val]
+                chall = authz.find_challenge(ct)
                 if chall is None:
-                    msg = f"No {challenge_type} challenge for {authz.identifier.value}"
+                    msg = f"No {ct} challenge for {domain_val}"
                     raise ValueError(msg)
                 if self._account_key is None:
                     msg = "No account key — call _ensure_account_key() first"
                     raise RuntimeError(msg)
                 ka = crypto.key_authorization(chall.token, self._account_key)
-                await handler.provision(authz.identifier.value, chall.token, ka)
-                provisioned.append((authz.identifier.value, chall.token))
+                await handler.provision(domain_val, chall.token, ka)
+                provisioned.append((domain_val, chall.token, handler))
                 await self.respond_to_challenge(chall)
 
             # 4. Poll authorizations
@@ -766,10 +796,12 @@ class Client:
                     if self._event_dispatcher is not None:
                         from lacme.events import ChallengeFailed
 
+                        domain_val = authz.identifier.value
+                        ct, _ = effective[domain_val]
                         await self._event_dispatcher.emit(
                             ChallengeFailed(
-                                domain=authz.identifier.value,
-                                challenge_type=challenge_type,
+                                domain=domain_val,
+                                challenge_type=ct,
                                 error=str(exc),
                             )
                         )
@@ -796,7 +828,7 @@ class Client:
         finally:
             # Deprovision challenges — catch errors so all are cleaned up
             # and the original exception is not masked.
-            for domain, token in provisioned:
+            for domain, token, handler in provisioned:
                 try:
                     await handler.deprovision(domain, token)
                 except Exception:
@@ -830,7 +862,11 @@ class Client:
         if self._store is not None:
             bundle = self._store.save_cert(bundle)
 
-        # 10. Emit event
+        # 10. Record issuance for rate limiting
+        if self._rate_limit_tracker is not None:
+            self._rate_limit_tracker.record(domains)
+
+        # 11. Emit event
         if self._event_dispatcher is not None:
             from lacme.events import CertificateIssued
 
@@ -843,6 +879,23 @@ class Client:
             )
 
         return bundle
+
+    # --- Rate limits ---
+
+    def check_rate_limits(self, domains: str | list[str]) -> RateLimitStatus:
+        """Check if issuing for *domains* would exceed rate limits.
+
+        Requires a ``rate_limit_tracker`` to be set on the client.
+
+        Raises:
+            ValueError: If no rate limit tracker is configured.
+        """
+        if self._rate_limit_tracker is None:
+            msg = "No rate_limit_tracker configured"
+            raise ValueError(msg)
+        if isinstance(domains, str):
+            domains = [domains]
+        return self._rate_limit_tracker.check(domains)
 
     # --- Auto-renewal ---
 
