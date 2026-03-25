@@ -22,6 +22,18 @@
       "automerge": false
     },
     {
+      "description": "Optional integrations",
+      "groupName": "Optional integrations",
+      "matchPackageNames": [
+        "starlette",
+        "fastapi",
+        "boto3",
+        "prometheus-client"
+      ],
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
       "description": "Dev/test tooling",
       "groupName": "Tooling",
       "matchPackageNames": [
@@ -29,13 +41,25 @@
         "mypy",
         "pytest",
         "pytest-cov",
-        "pytest-asyncio",
+        "anyio",
         "hypothesis",
         "pre-commit"
       ],
       "schedule": ["before 9am on the first day of the month"],
       "automerge": true,
       "matchUpdateTypes": ["patch"]
+    },
+    {
+      "description": "Documentation tooling",
+      "groupName": "Docs",
+      "matchPackageNames": [
+        "mkdocs-material",
+        "mkdocstrings",
+        "mkdocs-gen-files",
+        "mkdocs-literate-nav"
+      ],
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch"]
     },
     {
       "description": "GitHub Actions — group all action updates",
