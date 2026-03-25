@@ -132,6 +132,57 @@ class TestMemoryStore:
         store = MemoryStore()
         assert store.load_cert("missing.com") is None
 
+    def test_save_load_ca_roundtrip(self) -> None:
+        store = MemoryStore()
+        store.save_ca("root", b"---CERT---", b"---KEY---")
+        result = store.load_ca("root")
+        assert result is not None
+        assert result == (b"---CERT---", b"---KEY---")
+
+    def test_load_ca_returns_none_when_missing(self) -> None:
+        store = MemoryStore()
+        assert store.load_ca("nonexistent") is None
+
+
+# ---------------------------------------------------------------------------
+# FileStore CA
+# ---------------------------------------------------------------------------
+
+
+class TestFileStoreCA:
+    def test_save_load_ca_roundtrip(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        store.save_ca("root", b"---CERT---", b"---KEY---")
+        result = store.load_ca("root")
+        assert result is not None
+        assert result == (b"---CERT---", b"---KEY---")
+
+    def test_load_ca_returns_none_when_missing(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        assert store.load_ca("missing") is None
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+    def test_ca_key_permissions(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        store.save_ca("root", b"---CERT---", b"---KEY---")
+        key_path = tmp_path / "ca" / "root" / "key.pem"
+        assert oct(key_path.stat().st_mode & 0o777) == oct(0o600)
+
+    def test_empty_name_raises(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        with pytest.raises(ValueError, match="non-empty"):
+            store.save_ca("", b"---CERT---", b"---KEY---")
+
+    def test_save_ca_path_traversal_rejected(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        with pytest.raises(ValueError, match="Invalid CA name"):
+            store.save_ca("../../evil", b"---CERT---", b"---KEY---")
+
+    def test_load_ca_path_traversal_rejected(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        with pytest.raises(ValueError, match="Invalid CA name"):
+            store.load_ca("../../../etc/passwd")
+
 
 # ---------------------------------------------------------------------------
 # Protocol conformance

@@ -1325,8 +1325,8 @@ class TestRevocation:
         client = _make_client(account_key, httpx.MockTransport(handler))
         async with client:
             await client.create_account()
-            with pytest.raises(ValueError, match="Invalid revocation reason 2"):
-                await client.revoke(cert_pem, reason=2)
+            with pytest.raises(ValueError, match="Invalid revocation reason 99"):
+                await client.revoke(cert_pem, reason=99)
 
     @pytest.mark.anyio
     async def test_revoke_already_revoked(self, account_key: EllipticCurvePrivateKey) -> None:

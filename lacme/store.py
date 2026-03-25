@@ -45,6 +45,10 @@ class Store(Protocol):
 
     def list_certs(self) -> list[CertBundle]: ...
 
+    def save_ca(self, name: str, cert_pem: bytes, key_pem: bytes) -> None: ...
+
+    def load_ca(self, name: str) -> tuple[bytes, bytes] | None: ...
+
 
 # ---------------------------------------------------------------------------
 # FileStore
@@ -112,6 +116,39 @@ class FileStore:
             msg = f"Expected P-256 key, got {raw_key.curve.name}"
             raise TypeError(msg)
         return raw_key
+
+    # --- CA ---
+
+    def _resolve_ca_dir(self, name: str) -> Path:
+        """Resolve a CA directory path, rejecting invalid names and traversal."""
+        from pathlib import Path as _Path
+
+        if not name:
+            msg = "CA name must be non-empty"
+            raise ValueError(msg)
+        if any(sep in name for sep in (os.sep, os.altsep) if sep):
+            msg = f"Invalid CA name (path separator): {name!r}"
+            raise ValueError(msg)
+        ca_base = (self._base / "ca").resolve()
+        ca_dir = _Path(self._base / "ca" / name).resolve()
+        if not ca_dir.is_relative_to(ca_base):
+            msg = f"Invalid CA name (path traversal): {name!r}"
+            raise ValueError(msg)
+        return ca_dir
+
+    def save_ca(self, name: str, cert_pem: bytes, key_pem: bytes) -> None:
+        ca_dir = self._resolve_ca_dir(name)
+        ca_dir.mkdir(parents=True, exist_ok=True)
+        _atomic_write(ca_dir / "cert.pem", cert_pem, mode=0o644)
+        _atomic_write(ca_dir / "key.pem", key_pem, mode=0o600)
+
+    def load_ca(self, name: str) -> tuple[bytes, bytes] | None:
+        ca_dir = self._resolve_ca_dir(name)
+        cert_path = ca_dir / "cert.pem"
+        key_path = ca_dir / "key.pem"
+        if not cert_path.exists() or not key_path.exists():
+            return None
+        return (cert_path.read_bytes(), key_path.read_bytes())
 
     # --- Certificates ---
 
@@ -199,6 +236,7 @@ class MemoryStore:
     def __init__(self) -> None:
         self._account_key: ec.EllipticCurvePrivateKey | None = None
         self._certs: dict[str, CertBundle] = {}
+        self._cas: dict[str, tuple[bytes, bytes]] = {}
 
     def save_account_key(self, key: ec.EllipticCurvePrivateKey) -> None:
         self._account_key = key
@@ -215,6 +253,12 @@ class MemoryStore:
 
     def list_certs(self) -> list[CertBundle]:
         return list(self._certs.values())
+
+    def save_ca(self, name: str, cert_pem: bytes, key_pem: bytes) -> None:
+        self._cas[name] = (cert_pem, key_pem)
+
+    def load_ca(self, name: str) -> tuple[bytes, bytes] | None:
+        return self._cas.get(name)
 
 
 # ---------------------------------------------------------------------------

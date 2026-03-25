@@ -8,7 +8,6 @@ finalization, and certificate download.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import logging
 from time import monotonic
@@ -59,6 +58,25 @@ _MAX_BAD_NONCE_RETRIES = 1
 _VALID_REVOCATION_REASONS = set(RevocationReason)
 
 
+def _parse_retry_after(value: str) -> float | None:
+    """Parse a Retry-After header value (integer seconds or HTTP-date)."""
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    # Try HTTP-date format (RFC 7231 §7.1.1.1)
+    from email.utils import parsedate_to_datetime
+
+    try:
+        dt = parsedate_to_datetime(value)
+        import datetime
+
+        delta = (dt - datetime.datetime.now(datetime.UTC)).total_seconds()
+        return max(0.0, delta)
+    except (ValueError, TypeError):
+        return None
+
+
 def _validate_revocation_reason(reason: int) -> None:
     if reason not in _VALID_REVOCATION_REASONS:
         valid = ", ".join(f"{r.name}({int(r)})" for r in sorted(_VALID_REVOCATION_REASONS, key=int))
@@ -90,7 +108,17 @@ class Client:
         eab_hmac_key: str | None = None,
         event_dispatcher: EventDispatcher | None = None,
         rate_limit_tracker: RateLimitTracker | None = None,
+        ca_bundle: str | None = None,
+        client_cert: str | None = None,
+        client_key: str | None = None,
+        allow_insecure: bool = False,
     ) -> None:
+        if not allow_insecure and not directory_url.startswith("https://"):
+            msg = (
+                f"ACME directory URL must use HTTPS (got {directory_url!r}). "
+                "Pass allow_insecure=True to override for testing."
+            )
+            raise ValueError(msg)
         self._directory_url = directory_url
         self._account_key = account_key
         self._store = store
@@ -107,11 +135,20 @@ class Client:
         self._eab_kid = eab_kid
         self._eab_hmac_key = eab_hmac_key
 
+        if client_cert is not None and client_key is None:
+            msg = "client_cert requires client_key"
+            raise ValueError(msg)
+        if client_key is not None and client_cert is None:
+            msg = "client_key requires client_cert"
+            raise ValueError(msg)
+
         if http_client is not None:
             self._http = http_client
             self._owns_http = False
         else:
-            self._http = httpx.AsyncClient()
+            verify: bool | str = ca_bundle if ca_bundle is not None else True
+            cert = (client_cert, client_key) if client_cert and client_key else None
+            self._http = httpx.AsyncClient(verify=verify, cert=cert)
             self._owns_http = True
 
         self._directory: Directory | None = None
@@ -198,7 +235,10 @@ class Client:
         resp = await self._http.post(
             url,
             content=json.dumps(jws_body).encode(),
-            headers={"content-type": "application/jose+json"},
+            headers={
+                "content-type": "application/jose+json",
+                "accept": "application/pem-certificate-chain, application/json, application/problem+json",
+            },
         )
         self._harvest_nonce(resp)
         self._check_response(resp, expected_status)
@@ -533,8 +573,9 @@ class Client:
             delay = self._poll_interval
             retry_after = resp.headers.get("retry-after")
             if retry_after:
-                with contextlib.suppress(ValueError):
-                    delay = max(1.0, float(retry_after))
+                parsed = _parse_retry_after(retry_after)
+                if parsed is not None:
+                    delay = max(1.0, parsed)
             remaining = timeout - (monotonic() - start)
             delay = min(delay, max(0.1, remaining))
             await asyncio.sleep(delay)
@@ -582,8 +623,9 @@ class Client:
             delay = self._poll_interval
             retry_after = resp.headers.get("retry-after")
             if retry_after:
-                with contextlib.suppress(ValueError):
-                    delay = max(1.0, float(retry_after))
+                parsed = _parse_retry_after(retry_after)
+                if parsed is not None:
+                    delay = max(1.0, parsed)
             remaining = timeout - (monotonic() - start)
             delay = min(delay, max(0.1, remaining))
             await asyncio.sleep(delay)
@@ -629,8 +671,9 @@ class Client:
             delay = self._poll_interval
             retry_after = resp.headers.get("retry-after")
             if retry_after:
-                with contextlib.suppress(ValueError):
-                    delay = max(1.0, float(retry_after))
+                parsed = _parse_retry_after(retry_after)
+                if parsed is not None:
+                    delay = max(1.0, parsed)
             remaining = timeout - (monotonic() - start)
             delay = min(delay, max(0.1, remaining))
             await asyncio.sleep(delay)
