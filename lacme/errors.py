@@ -129,6 +129,26 @@ class BadRevocationReasonError(ACMEServerError):
     """``urn:ietf:params:acme:error:badRevocationReason``"""
 
 
+class CompoundError(ACMEServerError):
+    """``urn:ietf:params:acme:error:compound``"""
+
+
+class ExternalAccountRequiredError(ACMEServerError):
+    """``urn:ietf:params:acme:error:externalAccountRequired``"""
+
+
+class IncorrectResponseError(ACMEServerError):
+    """``urn:ietf:params:acme:error:incorrectResponse``"""
+
+
+class UnsupportedContactError(ACMEServerError):
+    """``urn:ietf:params:acme:error:unsupportedContact``"""
+
+
+class UserActionRequiredError(ACMEServerError):
+    """``urn:ietf:params:acme:error:userActionRequired``"""
+
+
 class ACMEValidationError(ACMEError):
     """A challenge validation failed (authorization became invalid)."""
 
@@ -161,6 +181,10 @@ class RateLimitPreventedError(ACMEError):
     """Raised when local rate limit tracking prevents issuance."""
 
 
+class CertificateAuthorityError(ACMEError):
+    """Error in CA operations (e.g., signing before init, invalid CSR)."""
+
+
 # ---------------------------------------------------------------------------
 # Registry: ACME error short name → exception class
 # ---------------------------------------------------------------------------
@@ -185,6 +209,11 @@ _ERROR_REGISTRY: dict[str, type[ACMEServerError]] = {
     "tls": TLSError,
     "alreadyRevoked": AlreadyRevokedError,
     "badRevocationReason": BadRevocationReasonError,
+    "compound": CompoundError,
+    "externalAccountRequired": ExternalAccountRequiredError,
+    "incorrectResponse": IncorrectResponseError,
+    "unsupportedContact": UnsupportedContactError,
+    "userActionRequired": UserActionRequiredError,
 }
 
 

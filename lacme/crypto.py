@@ -9,14 +9,19 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac as _hmac
+import ipaddress
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.x509 import (
     CertificateSigningRequestBuilder,
     DNSName,
+    IPAddress,
     Name,
     NameAttribute,
     SubjectAlternativeName,
@@ -154,19 +159,30 @@ def key_authorization(token: str, account_key: ec.EllipticCurvePrivateKey) -> st
 # ---------------------------------------------------------------------------
 
 
-def generate_csr(key: ec.EllipticCurvePrivateKey, domains: list[str]) -> bytes:
+def generate_csr(
+    key: ec.EllipticCurvePrivateKey,
+    domains: Sequence[str | ipaddress.IPv4Address | ipaddress.IPv6Address],
+) -> bytes:
     """Generate a DER-encoded CSR with *domains* as SANs.
 
-    CN is set to the first domain.  All domains appear in the SAN extension.
+    CN is set to the string representation of the first identifier.
+    Strings are treated as DNS names; :class:`~ipaddress.IPv4Address` and
+    :class:`~ipaddress.IPv6Address` objects become IP SANs.
     """
     if not domains:
-        msg = "At least one domain is required"
+        msg = "At least one identifier is required"
         raise ValueError(msg)
+    san_entries: list[DNSName | IPAddress] = []
+    for entry in domains:
+        if isinstance(entry, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
+            san_entries.append(IPAddress(entry))
+        else:
+            san_entries.append(DNSName(entry))
     builder = (
         CertificateSigningRequestBuilder()
-        .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, domains[0])]))
+        .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, str(domains[0]))]))
         .add_extension(
-            SubjectAlternativeName([DNSName(d) for d in domains]),
+            SubjectAlternativeName(san_entries),
             critical=False,
         )
     )

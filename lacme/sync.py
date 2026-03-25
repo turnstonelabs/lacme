@@ -184,6 +184,10 @@ class SyncClient:
         eab_hmac_key: str | None = None,
         event_dispatcher: EventDispatcher | None = None,
         rate_limit_tracker: RateLimitTracker | None = None,
+        ca_bundle: str | None = None,
+        client_cert: str | None = None,
+        client_key: str | None = None,
+        allow_insecure: bool = False,
     ) -> None:
         self._runner = _AsyncRunner()
         self._runner.open()
@@ -202,6 +206,10 @@ class SyncClient:
                 eab_hmac_key=eab_hmac_key,
                 event_dispatcher=event_dispatcher,
                 rate_limit_tracker=rate_limit_tracker,
+                ca_bundle=ca_bundle,
+                client_cert=client_cert,
+                client_key=client_key,
+                allow_insecure=allow_insecure,
             )
         except Exception:
             self._runner.close()

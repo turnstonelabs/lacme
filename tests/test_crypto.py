@@ -251,7 +251,7 @@ class TestCSRGeneration:
 
     def test_empty_domains_raises(self) -> None:
         key = generate_ec_key()
-        with pytest.raises(ValueError, match="At least one domain"):
+        with pytest.raises(ValueError, match="At least one identifier"):
             generate_csr(key, [])
 
     def test_returns_der_bytes(self) -> None:
@@ -260,6 +260,56 @@ class TestCSRGeneration:
         assert isinstance(der, bytes)
         # DER starts with 0x30 (SEQUENCE tag)
         assert der[0] == 0x30
+
+    def test_ip_address_san(self) -> None:
+        from ipaddress import IPv4Address
+
+        from cryptography.x509 import IPAddress, SubjectAlternativeName
+
+        key = generate_ec_key()
+        der = generate_csr(key, [IPv4Address("10.0.1.5")])
+        csr = load_der_x509_csr(der)
+        san_ext = csr.extensions.get_extension_for_class(SubjectAlternativeName)
+        ips = san_ext.value.get_values_for_type(IPAddress)
+        assert IPv4Address("10.0.1.5") in ips
+
+    def test_mixed_dns_and_ip_sans(self) -> None:
+        from ipaddress import IPv4Address, IPv6Address
+
+        from cryptography.x509 import DNSName, IPAddress, SubjectAlternativeName
+
+        key = generate_ec_key()
+        der = generate_csr(key, ["api.internal", IPv4Address("10.0.1.5"), IPv6Address("::1")])
+        csr = load_der_x509_csr(der)
+        san_ext = csr.extensions.get_extension_for_class(SubjectAlternativeName)
+        dns_names = san_ext.value.get_values_for_type(DNSName)
+        ips = san_ext.value.get_values_for_type(IPAddress)
+        assert "api.internal" in dns_names
+        assert IPv4Address("10.0.1.5") in ips
+        assert IPv6Address("::1") in ips
+
+    def test_ipv6_san(self) -> None:
+        from ipaddress import IPv6Address
+
+        from cryptography.x509 import IPAddress, SubjectAlternativeName
+
+        key = generate_ec_key()
+        der = generate_csr(key, [IPv6Address("2001:db8::1")])
+        csr = load_der_x509_csr(der)
+        san_ext = csr.extensions.get_extension_for_class(SubjectAlternativeName)
+        ips = san_ext.value.get_values_for_type(IPAddress)
+        assert IPv6Address("2001:db8::1") in ips
+
+    def test_ip_address_as_cn(self) -> None:
+        from ipaddress import IPv4Address
+
+        from cryptography.x509.oid import NameOID
+
+        key = generate_ec_key()
+        der = generate_csr(key, [IPv4Address("10.0.1.5")])
+        csr = load_der_x509_csr(der)
+        cn = csr.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        assert cn[0].value == "10.0.1.5"
 
 
 # ---------------------------------------------------------------------------

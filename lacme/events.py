@@ -74,12 +74,32 @@ class RateLimitWarning:
     window_hours: int
 
 
+@dataclass(frozen=True, slots=True)
+class CertificateAuthorityInitialized:
+    """Emitted when a CA root certificate is created or loaded."""
+
+    cn: str
+    expires_at: datetime.datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CACertificateIssued:
+    """Emitted when the CA signs a new certificate."""
+
+    name: str
+    names: tuple[str, ...]
+    is_client: bool
+    expires_at: datetime.datetime
+
+
 Event = (
     CertificateIssued
     | CertificateRenewed
     | CertificateExpiring
     | ChallengeFailed
     | RateLimitWarning
+    | CertificateAuthorityInitialized
+    | CACertificateIssued
 )
 
 _EVENT_NAMES: dict[type[Event], str] = {
@@ -88,6 +108,8 @@ _EVENT_NAMES: dict[type[Event], str] = {
     CertificateExpiring: "certificate_expiring",
     ChallengeFailed: "challenge_failed",
     RateLimitWarning: "rate_limit_warning",
+    CertificateAuthorityInitialized: "ca_initialized",
+    CACertificateIssued: "ca_certificate_issued",
 }
 
 
@@ -204,9 +226,16 @@ class EventDispatcher:
         for key, value in fields.items():
             if hasattr(value, "isoformat"):
                 fields[key] = value.isoformat()
+        identifier = (
+            fields.get("domain")
+            or fields.get("name")
+            or fields.get("cn")
+            or fields.get("registered_domain")
+            or ""
+        )
         logger.info(
             "%s: %s",
             event_name,
-            fields.get("domain", ""),
+            identifier,
             extra={"lacme_event": event_name, **fields},
         )
