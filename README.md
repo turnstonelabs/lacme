@@ -1,8 +1,9 @@
 # lacme
 
 [![CI](https://github.com/turnstonelabs/lacme/actions/workflows/ci.yml/badge.svg)](https://github.com/turnstonelabs/lacme/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![PyPI](https://img.shields.io/pypi/v/lacme)](https://pypi.org/project/lacme/)
+[![Python](https://img.shields.io/pypi/pyversions/lacme)](https://pypi.org/project/lacme/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
 Modern, async-native Python ACME client library for embedding TLS certificate automation.
 
