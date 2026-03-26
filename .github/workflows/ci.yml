@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: pip install pre-commit
       - run: SKIP=mypy pre-commit run --all-files
 
@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: pip install mypy
       - run: pip install -e .
       - run: mypy lacme/
@@ -64,7 +64,7 @@ jobs:
           uv-version: "0.9.18"
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: uv sync --frozen
       - run: uv pip install pip-audit
       - name: Security audit (dependencies)
