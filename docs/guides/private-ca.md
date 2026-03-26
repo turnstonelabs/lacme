@@ -97,6 +97,13 @@ app = Starlette(
 Service nodes connect to `http://ca-server:8443/acme/directory` as their
 ACME directory URL.
 
+The responder also serves the CA root certificate at `GET /ca.pem`, so service
+nodes can fetch it during bootstrapping:
+
+```bash
+curl -o root-ca.pem https://console:8443/acme/ca.pem
+```
+
 ### Challenge Validation
 
 The responder supports three modes:
@@ -357,6 +364,29 @@ async with Client(
     finally:
         task.cancel()
 ```
+
+### CA-Direct Renewal (Same Process)
+
+When the CA and renewal manager run in the same process, you can skip the ACME
+round-trip entirely by passing `ca` instead of `client`:
+
+```python
+from lacme import CertificateAuthority, RenewalManager, FileStore
+
+store = FileStore("~/.lacme")
+ca = CertificateAuthority(store)
+ca.init()
+
+# Issue initial cert
+ca.issue("api.internal")
+
+# Renew directly — no ACME responder or network needed
+manager = RenewalManager(ca=ca, store=store, days_before_expiry=1)
+task = manager.start()
+```
+
+This eliminates the startup ordering dependency (responder doesn't need to be
+running before renewal starts) and avoids the network round-trip.
 
 ## Short-Lived Certificates
 

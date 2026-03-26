@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from lacme._types import CertBundle
+    from lacme.ca import CertificateAuthority
     from lacme.client import Client
     from lacme.events import EventDispatcher
     from lacme.store import Store
@@ -28,12 +29,18 @@ logger = logging.getLogger("lacme")
 class RenewalManager:
     """Periodically check stored certificates and renew expiring ones.
 
+    Provide either *client* (renew via ACME protocol) or *ca* (sign
+    directly via :class:`~lacme.ca.CertificateAuthority`).  When *ca*
+    is used, no network round-trip or running ACME responder is needed.
+
     Args:
         client: ACME client used to issue replacement certificates.
+        ca: Certificate Authority for direct signing (alternative to *client*).
         store: Certificate store to enumerate and persist certificates.
         interval_hours: Hours between renewal sweeps.
         days_before_expiry: Renew certificates expiring within this many days.
         challenge_type: ACME challenge type for issuance (e.g. ``"http-01"``).
+            Only used with *client*, not *ca*.
         on_renewed: Optional callback invoked with each renewed :class:`CertBundle`.
             May be synchronous or asynchronous.
         max_jitter_seconds: Maximum random jitter (seconds) added to each sleep
@@ -43,7 +50,8 @@ class RenewalManager:
     def __init__(
         self,
         *,
-        client: Client,
+        client: Client | None = None,
+        ca: CertificateAuthority | None = None,
         store: Store,
         interval_hours: float = 12.0,
         days_before_expiry: int = 30,
@@ -52,7 +60,14 @@ class RenewalManager:
         max_jitter_seconds: float = 600.0,
         event_dispatcher: EventDispatcher | None = None,
     ) -> None:
+        if client is None and ca is None:
+            msg = "Either client or ca must be provided"
+            raise ValueError(msg)
+        if client is not None and ca is not None:
+            msg = "Provide either client or ca, not both"
+            raise ValueError(msg)
         self._client = client
+        self._ca = ca
         self._store = store
         self._interval_hours = interval_hours
         self._days_before_expiry = days_before_expiry
@@ -109,11 +124,15 @@ class RenewalManager:
                     bundle.domain,
                     bundle.expires_at.isoformat(),
                 )
-                new_bundle = await self._client.issue(
-                    list(bundle.domains),
-                    challenge_type=self._challenge_type,
-                )
-                # Explicitly save to our store (Client may have a different one)
+                if self._ca is not None:
+                    new_bundle = self._ca.issue(list(bundle.domains))
+                else:
+                    assert self._client is not None  # noqa: S101
+                    new_bundle = await self._client.issue(
+                        list(bundle.domains),
+                        challenge_type=self._challenge_type,
+                    )
+                # Explicitly save to our store (Client/CA may have a different one)
                 self._store.save_cert(new_bundle)
                 renewed.append(new_bundle)
             except Exception:

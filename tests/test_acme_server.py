@@ -426,3 +426,30 @@ class TestResponderAsMiddleware:
         assert resp.status_code == 404
         data = resp.json()
         assert data["type"] == "not-found"
+
+
+# ---------------------------------------------------------------------------
+# CA cert endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestCACertEndpoint:
+    @pytest.mark.anyio
+    async def test_ca_cert_endpoint(
+        self, responder: ACMEResponder, ca: CertificateAuthority
+    ) -> None:
+        """GET /ca.pem returns the CA root certificate as application/x-pem-file."""
+        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http:
+            resp = await http.get("/ca.pem")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/x-pem-file"
+
+        # The response body should be valid PEM parseable as a certificate
+        pem_data = resp.content
+        certs = load_pem_x509_certificates(pem_data)
+        assert len(certs) == 1
+
+        # It should match the CA's root cert
+        assert pem_data == ca.root_cert_pem

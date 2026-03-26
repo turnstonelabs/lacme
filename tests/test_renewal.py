@@ -242,3 +242,47 @@ class TestLifecycle:
                 manager.start()
 
             await manager.stop()
+
+
+# ---------------------------------------------------------------------------
+# CA-direct mode
+# ---------------------------------------------------------------------------
+
+
+class TestRenewalManagerCADirect:
+    @pytest.mark.anyio
+    async def test_ca_direct_renewal(self, make_test_bundle: Callable[..., CertBundle]) -> None:
+        """When ca is provided, check_and_renew() calls ca.issue() directly."""
+        from lacme.ca import CertificateAuthority
+
+        store = MemoryStore()
+        ca = CertificateAuthority(store=store)
+        ca.init()
+
+        # Issue a cert with very short validity so it's already expiring
+        bundle = ca.issue("example.com", validity_hours=1)
+        store.save_cert(bundle)
+
+        manager = RenewalManager(ca=ca, store=store, days_before_expiry=30)
+        renewed = await manager.check_and_renew()
+
+        assert len(renewed) == 1
+        assert renewed[0].domain == "example.com"
+        # Verify the new cert was saved to the store
+        loaded = store.load_cert("example.com")
+        assert loaded is not None
+        assert loaded.cert_pem == renewed[0].cert_pem
+
+    def test_ca_and_client_raises(self) -> None:
+        """Passing both ca and client raises ValueError."""
+        store = MemoryStore()
+        client = MagicMock()
+        ca = MagicMock()
+        with pytest.raises(ValueError, match="not both"):
+            RenewalManager(client=client, ca=ca, store=store)
+
+    def test_neither_ca_nor_client_raises(self) -> None:
+        """Passing neither ca nor client raises ValueError."""
+        store = MemoryStore()
+        with pytest.raises(ValueError, match="Either client or ca"):
+            RenewalManager(store=store)
