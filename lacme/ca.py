@@ -63,9 +63,11 @@ class CertificateAuthority:
         self,
         store: Store | None = None,
         *,
+        name: str = "root",
         event_dispatcher: EventDispatcher | None = None,
     ) -> None:
         self._store = store
+        self._ca_name = name
         self._event_dispatcher = event_dispatcher
         self._root_cert: x509.Certificate | None = None
         self._root_key: ec.EllipticCurvePrivateKey | None = None
@@ -80,7 +82,7 @@ class CertificateAuthority:
         """Initialize the CA: generate or load root CA cert + key.
 
         If a store is provided and a root CA already exists (via
-        ``store.load_ca("root")``), loads it.  Otherwise generates a
+        ``store.load_ca(name)``), loads it.  Otherwise generates a
         new self-signed root.
         """
         event_cn: str = cn
@@ -89,7 +91,7 @@ class CertificateAuthority:
         with self._lock:
             # Try loading from store first.
             if self._store is not None:
-                loaded = self._store.load_ca("root")
+                loaded = self._store.load_ca(self._ca_name)
                 if loaded is not None:
                     cert_pem, key_pem = loaded
                     certs = load_pem_x509_certificates(cert_pem)
@@ -162,7 +164,7 @@ class CertificateAuthority:
                 if self._store is not None:
                     cert_pem = cert.public_bytes(Encoding.PEM)
                     key_pem = key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
-                    self._store.save_ca("root", cert_pem, key_pem)
+                    self._store.save_ca(self._ca_name, cert_pem, key_pem)
 
         # Emit event outside the lock to avoid deadlocks with user callbacks.
         if event_expires is not None:
@@ -385,11 +387,19 @@ class CertificateAuthority:
         else:
             not_valid_after = now + datetime.timedelta(days=validity_days)
 
-        # Choose EKU based on client vs server.
+        # Choose EKU: by default include both serverAuth + clientAuth
+        # (standard for internal mTLS where certs serve dual purpose).
+        # client=True restricts to clientAuth only for the rare case
+        # where a client-only cert is needed.
         if client:
             eku = ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH])
         else:
-            eku = ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH])
+            eku = ExtendedKeyUsage(
+                [
+                    ExtendedKeyUsageOID.SERVER_AUTH,
+                    ExtendedKeyUsageOID.CLIENT_AUTH,
+                ]
+            )
 
         subject = Name([NameAttribute(NameOID.COMMON_NAME, str(names[0]))])
 

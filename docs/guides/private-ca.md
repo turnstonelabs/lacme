@@ -45,9 +45,13 @@ Create a `CertificateAuthority` backed by a `FileStore` for persistence:
 from lacme import CertificateAuthority, FileStore
 
 store = FileStore("~/.lacme-ca")
-ca = CertificateAuthority(store)
+ca = CertificateAuthority(store, name="turnstone")
 ca.init(cn="My Service Mesh CA", validity_days=3650)
 ```
+
+The optional `name` parameter (default `"root"`) controls the store key used
+by `save_ca()`/`load_ca()`. This allows multiple CAs in the same store (e.g.,
+one for mTLS, one for client-only certs).
 
 The `init()` method either loads an existing root CA from the store or generates
 a new self-signed root certificate. The root CA uses a P-256 EC key and is valid
@@ -410,16 +414,22 @@ For direct CA issuance (without the ACME protocol), you can specify validity
 explicitly:
 
 ```python
-# Issue a 24-hour server certificate
-server_bundle = ca.issue("worker-1.internal", validity_hours=24)
+# Issue a 24-hour certificate (has both serverAuth + clientAuth EKU)
+bundle = ca.issue("worker-1.internal", validity_hours=24)
 
-# Issue a 6-hour client certificate
+# Issue a client-only certificate (clientAuth EKU only)
 client_bundle = ca.issue(
     "worker-1.internal",
     client=True,
     validity_hours=6,
 )
 ```
+
+!!! note
+    By default, `ca.issue()` includes **both** `serverAuth` and `clientAuth` in the
+    Extended Key Usage extension. This is standard for mTLS deployments where the same
+    cert is used as a server cert (uvicorn TLS listener) and a client cert (connecting
+    to other services). Pass `client=True` only when you need a client-only cert.
 
 !!! tip
     A common rotation strategy: issue 24-hour certificates and set the renewal

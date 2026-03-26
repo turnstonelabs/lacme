@@ -126,13 +126,15 @@ class TestCAIssueServer:
         dns_names = san.get_values_for_type(DNSName)
         assert "api.internal" in dns_names
 
-    def test_issue_server_cert_has_server_auth_eku(self) -> None:
+    def test_issue_server_cert_has_dual_eku(self) -> None:
+        """Default certs have both serverAuth + clientAuth for mTLS."""
         ca = CertificateAuthority()
         ca.init()
         bundle = ca.issue("api.internal")
         cert = load_pem_x509_certificates(bundle.cert_pem)[0]
         eku = cert.extensions.get_extension_for_class(ExtendedKeyUsage).value
         assert ExtendedKeyUsageOID.SERVER_AUTH in eku
+        assert ExtendedKeyUsageOID.CLIENT_AUTH in eku
 
     def test_issue_server_cert_not_ca(self) -> None:
         ca = CertificateAuthority()
@@ -304,6 +306,34 @@ class TestCAStorage:
         ca2 = CertificateAuthority(store=store)
         ca2.init()
         assert ca2.root_cert_pem == root_pem_first
+
+    def test_custom_ca_name(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        ca = CertificateAuthority(store=store, name="turnstone")
+        ca.init()
+        ca_dir = tmp_path / "ca" / "turnstone"
+        assert (ca_dir / "cert.pem").exists()
+        assert (ca_dir / "key.pem").exists()
+
+    def test_multiple_cas_in_same_store(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        ca1 = CertificateAuthority(store=store, name="mtls")
+        ca1.init(cn="mTLS CA")
+        ca2 = CertificateAuthority(store=store, name="client")
+        ca2.init(cn="Client CA")
+        assert ca1.root_cert_pem != ca2.root_cert_pem
+        assert (tmp_path / "ca" / "mtls" / "cert.pem").exists()
+        assert (tmp_path / "ca" / "client" / "cert.pem").exists()
+
+    def test_custom_name_loads_correctly(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        ca1 = CertificateAuthority(store=store, name="myca")
+        ca1.init()
+        root_pem = ca1.root_cert_pem
+
+        ca2 = CertificateAuthority(store=store, name="myca")
+        ca2.init()
+        assert ca2.root_cert_pem == root_pem
 
 
 # ---------------------------------------------------------------------------
