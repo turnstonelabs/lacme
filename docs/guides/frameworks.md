@@ -379,6 +379,34 @@ uvicorn.run(
 )
 ```
 
+### PEM File Helpers
+
+Uvicorn only accepts file paths for SSL configuration, not `ssl.SSLContext` or
+in-memory PEM bytes. lacme provides helpers to bridge this gap:
+
+```python
+from lacme.mtls import pem_files
+
+with pem_files(bundle, ca_pem=ca.root_cert_pem) as paths:
+    uvicorn.run("app:app", **paths.as_uvicorn_kwargs())
+# temp files cleaned up automatically
+```
+
+For long-lived processes where a context manager is inconvenient:
+
+```python
+from lacme.mtls import write_pem_files_persistent
+
+paths = write_pem_files_persistent(bundle, ca_pem=ca.root_cert_pem)
+uvicorn.run("app:app", **paths.as_uvicorn_kwargs())
+# cleaned up via atexit when process exits
+```
+
+!!! note
+    To enforce client certificates (mTLS), also pass
+    `ssl_cert_reqs=ssl.CERT_REQUIRED` to uvicorn — it defaults to `CERT_NONE`
+    even when `ssl_ca_certs` is provided.
+
 ## Django
 
 Django is a synchronous framework, so use `SyncClient` for certificate

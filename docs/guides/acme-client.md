@@ -684,3 +684,11 @@ if bundle is not None:
 for bundle in store.list_certs():
     print(f"{bundle.domain}: expires {bundle.expires_at}")
 ```
+
+### Deleting Certificates
+
+Remove a certificate from the store:
+
+```python
+deleted = store.delete_cert("example.com")  # returns True if existed
+```

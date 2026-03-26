@@ -190,6 +190,10 @@ class ACMEResponder:
             await self._handle_cert(send, path, base_url, extra_headers)
             return
 
+        if path == "/ca.pem":
+            await self._handle_ca_cert(send, extra_headers)
+            return
+
         if path == "/key-change":
             raw = await self._read_body(receive)
             await self._handle_key_change(send, raw, extra_headers)
@@ -546,6 +550,18 @@ class ACMEResponder:
     async def _handle_revoke(self, send: Send, headers: dict[str, str]) -> None:
         # Accept revocation without verification (trusted internal network)
         await self._send_json(send, status=200, body={}, headers=headers)
+
+    async def _handle_ca_cert(self, send: Send, headers: dict[str, str]) -> None:
+        """Serve the CA root certificate for client bootstrapping."""
+        pem = self._ca.root_cert_pem
+        response_headers: list[list[bytes]] = [
+            [b"content-type", b"application/x-pem-file"],
+            [b"content-length", str(len(pem)).encode()],
+        ]
+        for k, v in headers.items():
+            response_headers.append([k.encode(), v.encode()])
+        await send({"type": "http.response.start", "status": 200, "headers": response_headers})
+        await send({"type": "http.response.body", "body": pem})
 
     # ------------------------------------------------------------------
     # Helpers

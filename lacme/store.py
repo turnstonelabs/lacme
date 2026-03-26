@@ -45,6 +45,8 @@ class Store(Protocol):
 
     def list_certs(self) -> list[CertBundle]: ...
 
+    def delete_cert(self, domain: str) -> bool: ...
+
     def save_ca(self, name: str, cert_pem: bytes, key_pem: bytes) -> None: ...
 
     def load_ca(self, name: str) -> tuple[bytes, bytes] | None: ...
@@ -224,6 +226,15 @@ class FileStore:
                     results.append(bundle)
         return results
 
+    def delete_cert(self, domain: str) -> bool:
+        import shutil
+
+        domain_dir = self._resolve_domain_dir(domain)
+        if not domain_dir.exists() or not (domain_dir / "meta.json").exists():
+            return False
+        shutil.rmtree(domain_dir)
+        return True
+
 
 # ---------------------------------------------------------------------------
 # MemoryStore
@@ -253,6 +264,12 @@ class MemoryStore:
 
     def list_certs(self) -> list[CertBundle]:
         return list(self._certs.values())
+
+    def delete_cert(self, domain: str) -> bool:
+        if domain in self._certs:
+            del self._certs[domain]
+            return True
+        return False
 
     def save_ca(self, name: str, cert_pem: bytes, key_pem: bytes) -> None:
         self._cas[name] = (cert_pem, key_pem)

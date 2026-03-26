@@ -88,6 +88,20 @@ class TestFileStore:
         path = tmp_path / "account.key"
         assert oct(path.stat().st_mode & 0o777) == oct(0o600)
 
+    def test_delete_cert(self, tmp_path: Path, make_test_bundle: Callable[..., CertBundle]) -> None:
+        store = FileStore(tmp_path)
+        bundle = make_test_bundle("delete-me.example.com")
+        store.save_cert(bundle)
+        assert store.load_cert("delete-me.example.com") is not None
+        result = store.delete_cert("delete-me.example.com")
+        assert result is True
+        assert store.load_cert("delete-me.example.com") is None
+
+    def test_delete_cert_missing(self, tmp_path: Path) -> None:
+        store = FileStore(tmp_path)
+        result = store.delete_cert("nonexistent.example.com")
+        assert result is False
+
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
     def test_cert_file_permissions(
         self, tmp_path: Path, make_test_bundle: Callable[..., CertBundle]
@@ -131,6 +145,20 @@ class TestMemoryStore:
     def test_load_cert_returns_none_when_missing(self) -> None:
         store = MemoryStore()
         assert store.load_cert("missing.com") is None
+
+    def test_delete_cert(self, make_test_bundle: Callable[..., CertBundle]) -> None:
+        store = MemoryStore()
+        bundle = make_test_bundle("delete-me.example.com")
+        store.save_cert(bundle)
+        assert store.load_cert("delete-me.example.com") is not None
+        result = store.delete_cert("delete-me.example.com")
+        assert result is True
+        assert store.load_cert("delete-me.example.com") is None
+
+    def test_delete_cert_missing(self) -> None:
+        store = MemoryStore()
+        result = store.delete_cert("nonexistent.example.com")
+        assert result is False
 
     def test_save_load_ca_roundtrip(self) -> None:
         store = MemoryStore()
