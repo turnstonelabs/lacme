@@ -607,6 +607,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Step 6: Auto-Renewal on Service Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ca-direct-renewal-same-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CA-Direct Renewal (Same Process)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1760,6 +1777,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Step 6: Auto-Renewal on Service Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ca-direct-renewal-same-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CA-Direct Renewal (Same Process)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1942,33 +1976,37 @@ endpoints. Mount it in your web framework (Starlette, FastAPI, etc.):</p>
 </code></pre></div>
 <p>Service nodes connect to <code>http://ca-server:8443/acme/directory</code> as their
 ACME directory URL.</p>
+<p>The responder also serves the CA root certificate at <code>GET /ca.pem</code>, so service
+nodes can fetch it during bootstrapping:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>root-ca.pem<span class="w"> </span>https://console:8443/acme/ca.pem
+</code></pre></div>
 <h3 id="challenge-validation">Challenge Validation<a class="headerlink" href="#challenge-validation" title="Permanent link">&para;</a></h3>
 <p>The responder supports three modes:</p>
 <p><strong><code>auto_approve=True</code></strong> -- Immediately validates all challenges. Use this when
 the CA and service nodes share a trusted network (the most common case for
 internal CAs):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">responder</span> <span class="o">=</span> <span class="n">ACMEResponder</span><span class="p">(</span><span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span> <span class="n">auto_approve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">responder</span> <span class="o">=</span> <span class="n">ACMEResponder</span><span class="p">(</span><span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span> <span class="n">auto_approve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Custom <code>ChallengeValidator</code></strong> -- Implement the <code>ChallengeValidator</code> protocol
 for custom validation logic:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChallengeValidator</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyValidator</span><span class="p">:</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">identifier</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="n">identifier_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="n">key_authorization</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="c1"># Custom validation logic (e.g., check DNS ownership)</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="n">allowed_hosts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span> <span class="s2">&quot;worker-2.internal&quot;</span><span class="p">}</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="k">return</span> <span class="n">identifier</span> <span class="ow">in</span> <span class="n">allowed_hosts</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">responder</span> <span class="o">=</span> <span class="n">ACMEResponder</span><span class="p">(</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="n">challenge_validator</span><span class="o">=</span><span class="n">MyValidator</span><span class="p">(),</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChallengeValidator</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyValidator</span><span class="p">:</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">identifier</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="n">identifier_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">key_authorization</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="c1"># Custom validation logic (e.g., check DNS ownership)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="n">allowed_hosts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span> <span class="s2">&quot;worker-2.internal&quot;</span><span class="p">}</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>        <span class="k">return</span> <span class="n">identifier</span> <span class="ow">in</span> <span class="n">allowed_hosts</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="n">responder</span> <span class="o">=</span> <span class="n">ACMEResponder</span><span class="p">(</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    <span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="n">challenge_validator</span><span class="o">=</span><span class="n">MyValidator</span><span class="p">(),</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="p">)</span>
 </code></pre></div>
 <p><strong>Neither</strong> -- Challenges remain in "processing" state. You must approve them
 out-of-band (rarely used).</p>
@@ -1982,140 +2020,140 @@ Do not expose it to untrusted clients without additional auth middleware.</p>
 <h2 id="step-3-distribute-the-root-certificate">Step 3: Distribute the Root Certificate<a class="headerlink" href="#step-3-distribute-the-root-certificate" title="Permanent link">&para;</a></h2>
 <p>Service nodes need the CA's root certificate to verify peer certificates.
 Serve it from the CA server:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">root_cert</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">content</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">root_cert_pem</span><span class="p">,</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/x-pem-file&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Content-Disposition&quot;</span><span class="p">:</span> <span class="s2">&quot;attachment; filename=root-ca.pem&quot;</span><span class="p">},</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="p">)</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># Add to your Starlette routes:</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/root-ca.pem&quot;</span><span class="p">,</span> <span class="n">root_cert</span><span class="p">),</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">root_cert</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        <span class="n">content</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">root_cert_pem</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/x-pem-file&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Content-Disposition&quot;</span><span class="p">:</span> <span class="s2">&quot;attachment; filename=root-ca.pem&quot;</span><span class="p">},</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="p">)</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Add to your Starlette routes:</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/root-ca.pem&quot;</span><span class="p">,</span> <span class="n">root_cert</span><span class="p">),</span>
 </code></pre></div>
 <p>Service nodes download the root certificate at startup:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>root-ca.pem<span class="w"> </span>http://ca-server:8443/root-ca.pem
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>root-ca.pem<span class="w"> </span>http://ca-server:8443/root-ca.pem
 </code></pre></div>
 <p>Or fetch it programmatically:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://ca-server:8443/root-ca.pem&quot;</span><span class="p">)</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">root_ca_pem</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">content</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;root-ca.pem&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">root_ca_pem</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://ca-server:8443/root-ca.pem&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">root_ca_pem</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">content</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;root-ca.pem&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">root_ca_pem</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="step-4-service-nodes-request-certificates">Step 4: Service Nodes Request Certificates<a class="headerlink" href="#step-4-service-nodes-request-certificates" title="Permanent link">&para;</a></h2>
 <p>Each service node uses the standard lacme <code>Client</code> to request a certificate
 from the CA:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">FileStore</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">CA_DIRECTORY</span> <span class="o">=</span> <span class="s2">&quot;http://ca-server:8443/acme/directory&quot;</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-node&quot;</span><span class="p">)</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        <span class="n">directory_url</span><span class="o">=</span><span class="n">CA_DIRECTORY</span><span class="p">,</span>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># HTTP on trusted network</span>
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">)</span>
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Certificate issued, expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">FileStore</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">CA_DIRECTORY</span> <span class="o">=</span> <span class="s2">&quot;http://ca-server:8443/acme/directory&quot;</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-node&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        <span class="n">directory_url</span><span class="o">=</span><span class="n">CA_DIRECTORY</span><span class="p">,</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>        <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># HTTP on trusted network</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Certificate issued, expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>If the CA server uses HTTPS with the internal CA's own certificate, pass
 <code>ca_bundle</code> instead of <code>allow_insecure</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://ca-server:8443/acme/directory&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">ca_bundle</span><span class="o">=</span><span class="s2">&quot;/path/to/root-ca.pem&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://ca-server:8443/acme/directory&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">ca_bundle</span><span class="o">=</span><span class="s2">&quot;/path/to/root-ca.pem&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <h2 id="step-5-build-mtls-ssl-contexts">Step 5: Build mTLS SSL Contexts<a class="headerlink" href="#step-5-build-mtls-ssl-contexts" title="Permanent link">&para;</a></h2>
 <p>Once a service node has its certificate and the root CA cert, build SSL
 contexts for mutual TLS:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.mtls</span><span class="w"> </span><span class="kn">import</span> <span class="n">server_ssl_context</span><span class="p">,</span> <span class="n">client_ssl_context</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># Read the root CA certificate</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;root-ca.pem&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">ca_cert_pem</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># Server context: serve TLS and require client certificates</span>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">server_ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>     <span class="c1"># Verify connecting clients</span>
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="p">)</span>
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="c1"># Client context: present our cert when connecting to peers</span>
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="n">client_ctx</span> <span class="o">=</span> <span class="n">client_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>     <span class="c1"># Verify the server we connect to</span>
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.mtls</span><span class="w"> </span><span class="kn">import</span> <span class="n">server_ssl_context</span><span class="p">,</span> <span class="n">client_ssl_context</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="c1"># Read the root CA certificate</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;root-ca.pem&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">ca_cert_pem</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># Server context: serve TLS and require client certificates</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">server_ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>     <span class="c1"># Verify connecting clients</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="p">)</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="c1"># Client context: present our cert when connecting to peers</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="n">client_ctx</span> <span class="o">=</span> <span class="n">client_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>     <span class="c1"># Verify the server we connect to</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="using-with-asyncio">Using with asyncio<a class="headerlink" href="#using-with-asyncio" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ssl</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Start a TLS server</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">server</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">handle_client</span><span class="p">,</span>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8443</span><span class="p">,</span>
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="n">ssl</span><span class="o">=</span><span class="n">server_ctx</span><span class="p">,</span>
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="p">)</span>
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="c1"># Connect to a peer with mTLS</span>
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="n">reader</span><span class="p">,</span> <span class="n">writer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    <span class="s2">&quot;worker-2.internal&quot;</span><span class="p">,</span>
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>    <span class="mi">8443</span><span class="p">,</span>
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    <span class="n">ssl</span><span class="o">=</span><span class="n">client_ctx</span><span class="p">,</span>
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ssl</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Start a TLS server</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">server</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">handle_client</span><span class="p">,</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8443</span><span class="p">,</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="n">ssl</span><span class="o">=</span><span class="n">server_ctx</span><span class="p">,</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="p">)</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="c1"># Connect to a peer with mTLS</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="n">reader</span><span class="p">,</span> <span class="n">writer</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>    <span class="s2">&quot;worker-2.internal&quot;</span><span class="p">,</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="mi">8443</span><span class="p">,</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    <span class="n">ssl</span><span class="o">=</span><span class="n">client_ctx</span><span class="p">,</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="using-with-aiohttp">Using with aiohttp<a class="headerlink" href="#using-with-aiohttp" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">aiohttp</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1"># Server</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiohttp</span><span class="w"> </span><span class="kn">import</span> <span class="n">web</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">app</span> <span class="o">=</span> <span class="n">web</span><span class="o">.</span><span class="n">Application</span><span class="p">()</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">web</span><span class="o">.</span><span class="n">run_app</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">ssl_context</span><span class="o">=</span><span class="n">server_ctx</span><span class="p">)</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1"># Client</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="k">async</span> <span class="k">with</span> <span class="n">aiohttp</span><span class="o">.</span><span class="n">ClientSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>        <span class="s2">&quot;https://worker-2.internal:8443/api&quot;</span><span class="p">,</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>        <span class="n">ssl</span><span class="o">=</span><span class="n">client_ctx</span><span class="p">,</span>
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">resp</span><span class="p">:</span>
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">aiohttp</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="c1"># Server</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiohttp</span><span class="w"> </span><span class="kn">import</span> <span class="n">web</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">app</span> <span class="o">=</span> <span class="n">web</span><span class="o">.</span><span class="n">Application</span><span class="p">()</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">web</span><span class="o">.</span><span class="n">run_app</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">ssl_context</span><span class="o">=</span><span class="n">server_ctx</span><span class="p">)</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="c1"># Client</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="k">async</span> <span class="k">with</span> <span class="n">aiohttp</span><span class="o">.</span><span class="n">ClientSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        <span class="s2">&quot;https://worker-2.internal:8443/api&quot;</span><span class="p">,</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        <span class="n">ssl</span><span class="o">=</span><span class="n">client_ctx</span><span class="p">,</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">resp</span><span class="p">:</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </code></pre></div>
 <h3 id="pem-data-vs-file-paths">PEM Data vs File Paths<a class="headerlink" href="#pem-data-vs-file-paths" title="Permanent link">&para;</a></h3>
 <p>Both <code>server_ssl_context()</code> and <code>client_ssl_context()</code> accept PEM data as
 <code>bytes</code>, file paths as <code>str</code>, or <code>pathlib.Path</code> objects:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Using in-memory PEM bytes (from CertBundle)</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>   <span class="c1"># bytes</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>          <span class="c1"># bytes</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>         <span class="c1"># bytes</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="p">)</span>
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="c1"># Using file paths (from FileStore)</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_path</span><span class="p">),</span>   <span class="c1"># str path</span>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_path</span><span class="p">),</span>          <span class="c1"># str path</span>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="s2">&quot;/etc/pki/root-ca.pem&quot;</span><span class="p">,</span>    <span class="c1"># str path</span>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Using in-memory PEM bytes (from CertBundle)</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>   <span class="c1"># bytes</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>          <span class="c1"># bytes</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>         <span class="c1"># bytes</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="p">)</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="c1"># Using file paths (from FileStore)</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    <span class="n">cert_pem</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_path</span><span class="p">),</span>   <span class="c1"># str path</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    <span class="n">key_pem</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_path</span><span class="p">),</span>          <span class="c1"># str path</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    <span class="n">ca_cert_pem</span><span class="o">=</span><span class="s2">&quot;/etc/pki/root-ca.pem&quot;</span><span class="p">,</span>    <span class="c1"># str path</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2126,43 +2164,61 @@ the file immediately. All SSL contexts enforce TLSv1.2 minimum.</p>
 <h2 id="step-6-auto-renewal-on-service-nodes">Step 6: Auto-Renewal on Service Nodes<a class="headerlink" href="#step-6-auto-renewal-on-service-nodes" title="Permanent link">&para;</a></h2>
 <p>Internal CA certificates are typically short-lived (24 hours by default).
 Auto-renewal keeps them fresh:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="n">CA_DIRECTORY</span><span class="p">,</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="c1"># Issue initial certificate</span>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">)</span>
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    <span class="c1"># Rebuild SSL contexts when certificates renew</span>
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_renewed</span><span class="p">(</span><span class="n">new_bundle</span><span class="p">):</span>
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>        <span class="k">nonlocal</span> <span class="n">server_ctx</span><span class="p">,</span> <span class="n">client_ctx</span>
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>        <span class="n">server_ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>        <span class="p">)</span>
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>        <span class="n">client_ctx</span> <span class="o">=</span> <span class="n">client_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
-<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
-<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
-<a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>        <span class="p">)</span>
-<a id="__codelineno-14-23" name="__codelineno-14-23" href="#__codelineno-14-23"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renewed: </span><span class="si">{</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">, expires </span><span class="si">{</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-14-24" name="__codelineno-14-24" href="#__codelineno-14-24"></a>
-<a id="__codelineno-14-25" name="__codelineno-14-25" href="#__codelineno-14-25"></a>    <span class="c1"># Check every 12 hours, renew 1 day before expiry</span>
-<a id="__codelineno-14-26" name="__codelineno-14-26" href="#__codelineno-14-26"></a>    <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">auto_renew</span><span class="p">(</span>
-<a id="__codelineno-14-27" name="__codelineno-14-27" href="#__codelineno-14-27"></a>        <span class="n">interval_hours</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
-<a id="__codelineno-14-28" name="__codelineno-14-28" href="#__codelineno-14-28"></a>        <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-14-29" name="__codelineno-14-29" href="#__codelineno-14-29"></a>        <span class="n">on_renewed</span><span class="o">=</span><span class="n">on_renewed</span><span class="p">,</span>
-<a id="__codelineno-14-30" name="__codelineno-14-30" href="#__codelineno-14-30"></a>    <span class="p">)</span>
-<a id="__codelineno-14-31" name="__codelineno-14-31" href="#__codelineno-14-31"></a>
-<a id="__codelineno-14-32" name="__codelineno-14-32" href="#__codelineno-14-32"></a>    <span class="c1"># Run your application...</span>
-<a id="__codelineno-14-33" name="__codelineno-14-33" href="#__codelineno-14-33"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-14-34" name="__codelineno-14-34" href="#__codelineno-14-34"></a>        <span class="k">await</span> <span class="n">serve_forever</span><span class="p">()</span>
-<a id="__codelineno-14-35" name="__codelineno-14-35" href="#__codelineno-14-35"></a>    <span class="k">finally</span><span class="p">:</span>
-<a id="__codelineno-14-36" name="__codelineno-14-36" href="#__codelineno-14-36"></a>        <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="n">CA_DIRECTORY</span><span class="p">,</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="c1"># Issue initial certificate</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    <span class="c1"># Rebuild SSL contexts when certificates renew</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">on_renewed</span><span class="p">(</span><span class="n">new_bundle</span><span class="p">):</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>        <span class="k">nonlocal</span> <span class="n">server_ctx</span><span class="p">,</span> <span class="n">client_ctx</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>        <span class="n">server_ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>        <span class="p">)</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>        <span class="n">client_ctx</span> <span class="o">=</span> <span class="n">client_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>        <span class="p">)</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renewed: </span><span class="si">{</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">, expires </span><span class="si">{</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>    <span class="c1"># Check every 12 hours, renew 1 day before expiry</span>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>    <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">auto_renew</span><span class="p">(</span>
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>        <span class="n">interval_hours</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a>        <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>        <span class="n">on_renewed</span><span class="o">=</span><span class="n">on_renewed</span><span class="p">,</span>
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>    <span class="p">)</span>
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>    <span class="c1"># Run your application...</span>
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a>        <span class="k">await</span> <span class="n">serve_forever</span><span class="p">()</span>
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>    <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a>        <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
 </code></pre></div>
+<h3 id="ca-direct-renewal-same-process">CA-Direct Renewal (Same Process)<a class="headerlink" href="#ca-direct-renewal-same-process" title="Permanent link">&para;</a></h3>
+<p>When the CA and renewal manager run in the same process, you can skip the ACME
+round-trip entirely by passing <code>ca</code> instead of <code>client</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">CertificateAuthority</span><span class="p">,</span> <span class="n">RenewalManager</span><span class="p">,</span> <span class="n">FileStore</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">ca</span> <span class="o">=</span> <span class="n">CertificateAuthority</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="n">ca</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1"># Issue initial cert</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;api.internal&quot;</span><span class="p">)</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="c1"># Renew directly — no ACME responder or network needed</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="n">manager</span> <span class="o">=</span> <span class="n">RenewalManager</span><span class="p">(</span><span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span> <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="n">task</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</code></pre></div>
+<p>This eliminates the startup ordering dependency (responder doesn't need to be
+running before renewal starts) and avoids the network round-trip.</p>
 <h2 id="short-lived-certificates">Short-Lived Certificates<a class="headerlink" href="#short-lived-certificates" title="Permanent link">&para;</a></h2>
 <p>The internal CA issues certificates with short validity periods by default:</p>
 <table>
@@ -2197,15 +2253,15 @@ Auto-renewal keeps them fresh:</p>
 </ul>
 <p>For direct CA issuance (without the ACME protocol), you can specify validity
 explicitly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Issue a 24-hour server certificate</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">server_bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span> <span class="n">validity_hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># Issue a 6-hour client certificate</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">client_bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">client</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="n">validity_hours</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Issue a 24-hour server certificate</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">server_bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span> <span class="n">validity_hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># Issue a 6-hour client certificate</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">client_bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="n">client</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    <span class="n">validity_hours</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="p">)</span>
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -2240,91 +2296,91 @@ failures.</p>
 </ul>
 <h2 id="complete-example">Complete Example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
 <h3 id="ca-server-ca_serverpy">CA Server (<code>ca_server.py</code>)<a class="headerlink" href="#ca-server-ca_serverpy" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span><span class="p">,</span> <span class="n">Response</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mount</span><span class="p">,</span> <span class="n">Route</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACMEResponder</span><span class="p">,</span> <span class="n">CertificateAuthority</span><span class="p">,</span> <span class="n">FileStore</span>
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-ca&quot;</span><span class="p">)</span>
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="n">ca</span> <span class="o">=</span> <span class="n">CertificateAuthority</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="n">ca</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">cn</span><span class="o">=</span><span class="s2">&quot;My Service Mesh CA&quot;</span><span class="p">,</span> <span class="n">validity_days</span><span class="o">=</span><span class="mi">3650</span><span class="p">)</span>
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="n">responder</span> <span class="o">=</span> <span class="n">ACMEResponder</span><span class="p">(</span><span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span> <span class="n">auto_approve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">})</span>
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">root_cert</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>        <span class="n">content</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">root_cert_pem</span><span class="p">,</span>
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/x-pem-file&quot;</span><span class="p">,</span>
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>    <span class="p">)</span>
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span>
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>    <span class="n">routes</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>        <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">health</span><span class="p">),</span>
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a>        <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/root-ca.pem&quot;</span><span class="p">,</span> <span class="n">root_cert</span><span class="p">),</span>
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a>        <span class="n">Mount</span><span class="p">(</span><span class="s2">&quot;/acme&quot;</span><span class="p">,</span> <span class="n">app</span><span class="o">=</span><span class="n">responder</span><span class="p">),</span>
-<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a>    <span class="p">],</span>
-<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a><span class="p">)</span>
-<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a>
-<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a>    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8443</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.applications</span><span class="w"> </span><span class="kn">import</span> <span class="n">Starlette</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span><span class="p">,</span> <span class="n">Response</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mount</span><span class="p">,</span> <span class="n">Route</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACMEResponder</span><span class="p">,</span> <span class="n">CertificateAuthority</span><span class="p">,</span> <span class="n">FileStore</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-ca&quot;</span><span class="p">)</span>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="n">ca</span> <span class="o">=</span> <span class="n">CertificateAuthority</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a><span class="n">ca</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">cn</span><span class="o">=</span><span class="s2">&quot;My Service Mesh CA&quot;</span><span class="p">,</span> <span class="n">validity_days</span><span class="o">=</span><span class="mi">3650</span><span class="p">)</span>
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a><span class="n">responder</span> <span class="o">=</span> <span class="n">ACMEResponder</span><span class="p">(</span><span class="n">ca</span><span class="o">=</span><span class="n">ca</span><span class="p">,</span> <span class="n">auto_approve</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">})</span>
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">root_cert</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>        <span class="n">content</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">root_cert_pem</span><span class="p">,</span>
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>        <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/x-pem-file&quot;</span><span class="p">,</span>
+<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>    <span class="p">)</span>
+<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>
+<a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Starlette</span><span class="p">(</span>
+<a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a>    <span class="n">routes</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>        <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">,</span> <span class="n">health</span><span class="p">),</span>
+<a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a>        <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/root-ca.pem&quot;</span><span class="p">,</span> <span class="n">root_cert</span><span class="p">),</span>
+<a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a>        <span class="n">Mount</span><span class="p">(</span><span class="s2">&quot;/acme&quot;</span><span class="p">,</span> <span class="n">app</span><span class="o">=</span><span class="n">responder</span><span class="p">),</span>
+<a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a>    <span class="p">],</span>
+<a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a><span class="p">)</span>
+<a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a>
+<a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a>    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8443</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="service-node-service_nodepy">Service Node (<code>service_node.py</code>)<a class="headerlink" href="#service-node-service_nodepy" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">FileStore</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.mtls</span><span class="w"> </span><span class="kn">import</span> <span class="n">client_ssl_context</span><span class="p">,</span> <span class="n">server_ssl_context</span>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="n">CA_DIRECTORY</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:8443/acme/directory&quot;</span>
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">ROOT_CA_PEM</span> <span class="o">=</span> <span class="s2">&quot;root-ca.pem&quot;</span>
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="n">NODE_IDENTITY</span> <span class="o">=</span> <span class="s2">&quot;worker-1.internal&quot;</span>
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>
-<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>    <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-node&quot;</span><span class="p">)</span>
-<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    <span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
-<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>
-<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>        <span class="n">directory_url</span><span class="o">=</span><span class="n">CA_DIRECTORY</span><span class="p">,</span>
-<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>        <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>        <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>        <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>        <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="n">NODE_IDENTITY</span><span class="p">)</span>
-<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>
-<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">ROOT_CA_PEM</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>            <span class="n">ca_cert_pem</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>
-<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>        <span class="n">srv_ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>
-<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
-<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
-<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a>        <span class="p">)</span>
-<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>
-<a id="__codelineno-17-31" name="__codelineno-17-31" href="#__codelineno-17-31"></a>        <span class="n">cli_ctx</span> <span class="o">=</span> <span class="n">client_ssl_context</span><span class="p">(</span>
-<a id="__codelineno-17-32" name="__codelineno-17-32" href="#__codelineno-17-32"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
-<a id="__codelineno-17-33" name="__codelineno-17-33" href="#__codelineno-17-33"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
-<a id="__codelineno-17-34" name="__codelineno-17-34" href="#__codelineno-17-34"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
-<a id="__codelineno-17-35" name="__codelineno-17-35" href="#__codelineno-17-35"></a>        <span class="p">)</span>
-<a id="__codelineno-17-36" name="__codelineno-17-36" href="#__codelineno-17-36"></a>
-<a id="__codelineno-17-37" name="__codelineno-17-37" href="#__codelineno-17-37"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">on_renewed</span><span class="p">(</span><span class="n">new_bundle</span><span class="p">):</span>
-<a id="__codelineno-17-38" name="__codelineno-17-38" href="#__codelineno-17-38"></a>            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renewed: </span><span class="si">{</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-17-39" name="__codelineno-17-39" href="#__codelineno-17-39"></a>
-<a id="__codelineno-17-40" name="__codelineno-17-40" href="#__codelineno-17-40"></a>        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">auto_renew</span><span class="p">(</span>
-<a id="__codelineno-17-41" name="__codelineno-17-41" href="#__codelineno-17-41"></a>            <span class="n">interval_hours</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
-<a id="__codelineno-17-42" name="__codelineno-17-42" href="#__codelineno-17-42"></a>            <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-17-43" name="__codelineno-17-43" href="#__codelineno-17-43"></a>            <span class="n">on_renewed</span><span class="o">=</span><span class="n">on_renewed</span><span class="p">,</span>
-<a id="__codelineno-17-44" name="__codelineno-17-44" href="#__codelineno-17-44"></a>        <span class="p">)</span>
-<a id="__codelineno-17-45" name="__codelineno-17-45" href="#__codelineno-17-45"></a>
-<a id="__codelineno-17-46" name="__codelineno-17-46" href="#__codelineno-17-46"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-17-47" name="__codelineno-17-47" href="#__codelineno-17-47"></a>            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3600</span><span class="p">)</span>
-<a id="__codelineno-17-48" name="__codelineno-17-48" href="#__codelineno-17-48"></a>        <span class="k">finally</span><span class="p">:</span>
-<a id="__codelineno-17-49" name="__codelineno-17-49" href="#__codelineno-17-49"></a>            <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-<a id="__codelineno-17-50" name="__codelineno-17-50" href="#__codelineno-17-50"></a>
-<a id="__codelineno-17-51" name="__codelineno-17-51" href="#__codelineno-17-51"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">FileStore</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.mtls</span><span class="w"> </span><span class="kn">import</span> <span class="n">client_ssl_context</span><span class="p">,</span> <span class="n">server_ssl_context</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="n">CA_DIRECTORY</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:8443/acme/directory&quot;</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="n">ROOT_CA_PEM</span> <span class="o">=</span> <span class="s2">&quot;root-ca.pem&quot;</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="n">NODE_IDENTITY</span> <span class="o">=</span> <span class="s2">&quot;worker-1.internal&quot;</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>    <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-node&quot;</span><span class="p">)</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>    <span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>        <span class="n">directory_url</span><span class="o">=</span><span class="n">CA_DIRECTORY</span><span class="p">,</span>
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>        <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>        <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>        <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>        <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="n">NODE_IDENTITY</span><span class="p">)</span>
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">ROOT_CA_PEM</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>            <span class="n">ca_cert_pem</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>
+<a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>        <span class="n">srv_ctx</span> <span class="o">=</span> <span class="n">server_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">fullchain_pem</span><span class="p">,</span>
+<a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
+<a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
+<a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a>        <span class="p">)</span>
+<a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a>
+<a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a>        <span class="n">cli_ctx</span> <span class="o">=</span> <span class="n">client_ssl_context</span><span class="p">(</span>
+<a id="__codelineno-19-32" name="__codelineno-19-32" href="#__codelineno-19-32"></a>            <span class="n">cert_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
+<a id="__codelineno-19-33" name="__codelineno-19-33" href="#__codelineno-19-33"></a>            <span class="n">key_pem</span><span class="o">=</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">,</span>
+<a id="__codelineno-19-34" name="__codelineno-19-34" href="#__codelineno-19-34"></a>            <span class="n">ca_cert_pem</span><span class="o">=</span><span class="n">ca_cert_pem</span><span class="p">,</span>
+<a id="__codelineno-19-35" name="__codelineno-19-35" href="#__codelineno-19-35"></a>        <span class="p">)</span>
+<a id="__codelineno-19-36" name="__codelineno-19-36" href="#__codelineno-19-36"></a>
+<a id="__codelineno-19-37" name="__codelineno-19-37" href="#__codelineno-19-37"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">on_renewed</span><span class="p">(</span><span class="n">new_bundle</span><span class="p">):</span>
+<a id="__codelineno-19-38" name="__codelineno-19-38" href="#__codelineno-19-38"></a>            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renewed: </span><span class="si">{</span><span class="n">new_bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-19-39" name="__codelineno-19-39" href="#__codelineno-19-39"></a>
+<a id="__codelineno-19-40" name="__codelineno-19-40" href="#__codelineno-19-40"></a>        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">auto_renew</span><span class="p">(</span>
+<a id="__codelineno-19-41" name="__codelineno-19-41" href="#__codelineno-19-41"></a>            <span class="n">interval_hours</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<a id="__codelineno-19-42" name="__codelineno-19-42" href="#__codelineno-19-42"></a>            <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-19-43" name="__codelineno-19-43" href="#__codelineno-19-43"></a>            <span class="n">on_renewed</span><span class="o">=</span><span class="n">on_renewed</span><span class="p">,</span>
+<a id="__codelineno-19-44" name="__codelineno-19-44" href="#__codelineno-19-44"></a>        <span class="p">)</span>
+<a id="__codelineno-19-45" name="__codelineno-19-45" href="#__codelineno-19-45"></a>
+<a id="__codelineno-19-46" name="__codelineno-19-46" href="#__codelineno-19-46"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-19-47" name="__codelineno-19-47" href="#__codelineno-19-47"></a>            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3600</span><span class="p">)</span>
+<a id="__codelineno-19-48" name="__codelineno-19-48" href="#__codelineno-19-48"></a>        <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-19-49" name="__codelineno-19-49" href="#__codelineno-19-49"></a>            <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+<a id="__codelineno-19-50" name="__codelineno-19-50" href="#__codelineno-19-50"></a>
+<a id="__codelineno-19-51" name="__codelineno-19-51" href="#__codelineno-19-51"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
 
 

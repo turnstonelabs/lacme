@@ -848,6 +848,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#deleting-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deleting Certificates
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2240,6 +2251,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#deleting-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deleting Certificates
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2933,6 +2955,10 @@ like <code>tldextract</code>:</p>
 <a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a><span class="c1"># List all stored certificates</span>
 <a id="__codelineno-35-9" name="__codelineno-35-9" href="#__codelineno-35-9"></a><span class="k">for</span> <span class="n">bundle</span> <span class="ow">in</span> <span class="n">store</span><span class="o">.</span><span class="n">list_certs</span><span class="p">():</span>
 <a id="__codelineno-35-10" name="__codelineno-35-10" href="#__codelineno-35-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">: expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="deleting-certificates">Deleting Certificates<a class="headerlink" href="#deleting-certificates" title="Permanent link">&para;</a></h3>
+<p>Remove a certificate from the store:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="n">deleted</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">delete_cert</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>  <span class="c1"># returns True if existed</span>
 </code></pre></div>
 
 

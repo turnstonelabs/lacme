@@ -721,6 +721,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pem-file-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PEM File Helpers
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1857,6 +1868,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pem-file-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PEM File Helpers
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2246,68 +2268,90 @@ browsers and clients.</p>
 <a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>    <span class="o">**</span><span class="n">ssl_kwargs_from_store</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="s2">&quot;example.com&quot;</span><span class="p">),</span>
 <a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a><span class="p">)</span>
 </code></pre></div>
+<h3 id="pem-file-helpers">PEM File Helpers<a class="headerlink" href="#pem-file-helpers" title="Permanent link">&para;</a></h3>
+<p>Uvicorn only accepts file paths for SSL configuration, not <code>ssl.SSLContext</code> or
+in-memory PEM bytes. lacme provides helpers to bridge this gap:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.mtls</span><span class="w"> </span><span class="kn">import</span> <span class="n">pem_files</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="k">with</span> <span class="n">pem_files</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">ca_pem</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">root_cert_pem</span><span class="p">)</span> <span class="k">as</span> <span class="n">paths</span><span class="p">:</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;app:app&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">paths</span><span class="o">.</span><span class="n">as_uvicorn_kwargs</span><span class="p">())</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="c1"># temp files cleaned up automatically</span>
+</code></pre></div>
+<p>For long-lived processes where a context manager is inconvenient:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.mtls</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_pem_files_persistent</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">paths</span> <span class="o">=</span> <span class="n">write_pem_files_persistent</span><span class="p">(</span><span class="n">bundle</span><span class="p">,</span> <span class="n">ca_pem</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">root_cert_pem</span><span class="p">)</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;app:app&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">paths</span><span class="o">.</span><span class="n">as_uvicorn_kwargs</span><span class="p">())</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1"># cleaned up via atexit when process exits</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>To enforce client certificates (mTLS), also pass
+<code>ssl_cert_reqs=ssl.CERT_REQUIRED</code> to uvicorn — it defaults to <code>CERT_NONE</code>
+even when <code>ssl_ca_certs</code> is provided.</p>
+</div>
 <h2 id="django">Django<a class="headerlink" href="#django" title="Permanent link">&para;</a></h2>
 <p>Django is a synchronous framework, so use <code>SyncClient</code> for certificate
 management. Since Django does not natively run as an ASGI app, you need to
 serve challenge responses manually.</p>
 <h3 id="challenge-view">Challenge View<a class="headerlink" href="#challenge-view" title="Permanent link">&para;</a></h3>
 <p>Create a Django view that serves HTTP-01 challenge responses:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># views.py</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">django.http</span><span class="w"> </span><span class="kn">import</span> <span class="n">HttpResponse</span><span class="p">,</span> <span class="n">HttpResponseNotFound</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="c1"># Create handler at module level (shared state)</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="k">def</span><span class="w"> </span><span class="nf">acme_challenge</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serve ACME HTTP-01 challenge responses.&quot;&quot;&quot;</span>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="n">key_authz</span> <span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    <span class="k">if</span> <span class="n">key_authz</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        <span class="k">return</span> <span class="n">HttpResponseNotFound</span><span class="p">(</span><span class="s2">&quot;Challenge not found&quot;</span><span class="p">)</span>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="k">return</span> <span class="n">HttpResponse</span><span class="p">(</span>
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>        <span class="n">key_authz</span><span class="p">,</span>
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        <span class="n">content_type</span><span class="o">=</span><span class="s2">&quot;application/octet-stream&quot;</span><span class="p">,</span>
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    <span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># views.py</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">django.http</span><span class="w"> </span><span class="kn">import</span> <span class="n">HttpResponse</span><span class="p">,</span> <span class="n">HttpResponseNotFound</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1"># Create handler at module level (shared state)</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="k">def</span><span class="w"> </span><span class="nf">acme_challenge</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serve ACME HTTP-01 challenge responses.&quot;&quot;&quot;</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    <span class="n">key_authz</span> <span class="o">=</span> <span class="n">handler</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="k">if</span> <span class="n">key_authz</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>        <span class="k">return</span> <span class="n">HttpResponseNotFound</span><span class="p">(</span><span class="s2">&quot;Challenge not found&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="k">return</span> <span class="n">HttpResponse</span><span class="p">(</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>        <span class="n">key_authz</span><span class="p">,</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>        <span class="n">content_type</span><span class="o">=</span><span class="s2">&quot;application/octet-stream&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    <span class="p">)</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># urls.py</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">django.urls</span><span class="w"> </span><span class="kn">import</span> <span class="n">path</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">views</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">urlpatterns</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="n">path</span><span class="p">(</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        <span class="s2">&quot;.well-known/acme-challenge/&lt;str:token&gt;&quot;</span><span class="p">,</span>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        <span class="n">views</span><span class="o">.</span><span class="n">acme_challenge</span><span class="p">,</span>
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    <span class="p">),</span>
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    <span class="c1"># ... your other URLs</span>
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># urls.py</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">django.urls</span><span class="w"> </span><span class="kn">import</span> <span class="n">path</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">views</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="n">urlpatterns</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="n">path</span><span class="p">(</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>        <span class="s2">&quot;.well-known/acme-challenge/&lt;str:token&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>        <span class="n">views</span><span class="o">.</span><span class="n">acme_challenge</span><span class="p">,</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    <span class="p">),</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    <span class="c1"># ... your other URLs</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="p">]</span>
 </code></pre></div>
 <h3 id="issue-a-certificate">Issue a Certificate<a class="headerlink" href="#issue-a-certificate" title="Permanent link">&para;</a></h3>
 <p>Use <code>SyncClient</code> in a Django management command:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># management/commands/issue_cert.py</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">django.core.management.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCommand</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncClient</span><span class="p">,</span> <span class="n">FileStore</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">myapp.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">handler</span>  <span class="c1"># import the shared handler</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">help</span> <span class="o">=</span> <span class="s2">&quot;Issue a TLS certificate&quot;</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>        <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>        <span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span>
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>            <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>            <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>            <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>        <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>            <span class="n">bundle</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="n">options</span><span class="p">[</span><span class="s2">&quot;domains&quot;</span><span class="p">])</span>
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>                <span class="sa">f</span><span class="s2">&quot;Certificate issued for </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">, &quot;</span>
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>                <span class="sa">f</span><span class="s2">&quot;expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>            <span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># management/commands/issue_cert.py</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">django.core.management.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCommand</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncClient</span><span class="p">,</span> <span class="n">FileStore</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">myapp.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">handler</span>  <span class="c1"># import the shared handler</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">Command</span><span class="p">(</span><span class="n">BaseCommand</span><span class="p">):</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="n">help</span> <span class="o">=</span> <span class="s2">&quot;Issue a TLS certificate&quot;</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;domains&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>        <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>        <span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>            <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>            <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>            <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>        <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>            <span class="n">bundle</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="n">options</span><span class="p">[</span><span class="s2">&quot;domains&quot;</span><span class="p">])</span>
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>                <span class="sa">f</span><span class="s2">&quot;Certificate issued for </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">, &quot;</span>
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>                <span class="sa">f</span><span class="s2">&quot;expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>            <span class="p">)</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>python<span class="w"> </span>manage.py<span class="w"> </span>issue_cert<span class="w"> </span>example.com<span class="w"> </span>www.example.com
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>python<span class="w"> </span>manage.py<span class="w"> </span>issue_cert<span class="w"> </span>example.com<span class="w"> </span>www.example.com
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>

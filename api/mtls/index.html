@@ -1020,6 +1020,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#lacme.mtls.PemPaths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PemPaths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PemPaths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lacme.mtls.PemPaths.as_uvicorn_kwargs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        as_uvicorn_kwargs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lacme.mtls.client_ssl_context" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1031,10 +1059,43 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#lacme.mtls.pem_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pem_files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lacme.mtls.server_ssl_context" class="md-nav__link">
     <span class="md-ellipsis">
       
         server_ssl_context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lacme.mtls.write_pem_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_pem_files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lacme.mtls.write_pem_files_persistent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_pem_files_persistent
       
     </span>
   </a>
@@ -1475,6 +1536,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#lacme.mtls.PemPaths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PemPaths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PemPaths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lacme.mtls.PemPaths.as_uvicorn_kwargs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        as_uvicorn_kwargs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lacme.mtls.client_ssl_context" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1486,10 +1575,43 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#lacme.mtls.pem_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pem_files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lacme.mtls.server_ssl_context" class="md-nav__link">
     <span class="md-ellipsis">
       
         server_ssl_context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lacme.mtls.write_pem_files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_pem_files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lacme.mtls.write_pem_files_persistent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_pem_files_persistent
       
     </span>
   </a>
@@ -1539,7 +1661,10 @@
         <p>mTLS SSL context helpers.</p>
 <p>Provides :func:<code>server_ssl_context</code> and :func:<code>client_ssl_context</code> for
 creating :class:<code>ssl.SSLContext</code> objects configured for mutual TLS.
-Accepts PEM data as <code>bytes</code> or file paths as <code>str</code>/:class:<code>~pathlib.Path</code>.</p>
+Also provides :func:<code>write_pem_files</code> and :func:<code>pem_files</code> for writing
+PEM data to secure temporary files (useful for uvicorn which only accepts
+file paths).  Accepts PEM data as <code>bytes</code> or file paths as
+<code>str</code>/:class:<code>~pathlib.Path</code>.</p>
 
 
 
@@ -1583,6 +1708,80 @@ Accepts PEM data as <code>bytes</code> or file paths as <code>str</code>/:class:
 </div>
 
 
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="lacme.mtls.PemPaths" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">PemPaths</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#lacme.mtls.PemPaths" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Paths to PEM files written by :func:<code>write_pem_files</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="lacme.mtls.PemPaths.as_uvicorn_kwargs" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">as_uvicorn_kwargs</span>
+
+
+<a href="#lacme.mtls.PemPaths.as_uvicorn_kwargs" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">as_uvicorn_kwargs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return kwargs suitable for <code>uvicorn.run()</code>.</p>
+<p>When <code>ca</code> is set, includes <code>ssl_ca_certs</code>.  To enforce
+mTLS (require client certificates), also pass
+<code>ssl_cert_reqs=ssl.CERT_REQUIRED</code> to uvicorn — it defaults
+to <code>CERT_NONE</code> even when <code>ssl_ca_certs</code> is provided.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 <div class="doc doc-object doc-function">
@@ -1710,6 +1909,31 @@ file path).  Overrides the system default trust store.</p>
 <div class="doc doc-object doc-function">
 
 
+<h4 id="lacme.mtls.pem_files" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">pem_files</span>
+
+
+<a href="#lacme.mtls.pem_files" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">pem_files</span><span class="p">(</span><span class="n">bundle</span><span class="p">:</span> <span class="n">CertBundle</span><span class="p">,</span> <span class="n">ca_pem</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">PemPaths</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Context manager: write PEM files and clean up on exit.</p>
+<p>Usage::</p>
+<div class="highlight"><pre><span></span><code>with pem_files(bundle, ca_pem=ca.root_cert_pem) as paths:
+    uvicorn.run(&quot;app:app&quot;, **paths.as_uvicorn_kwargs())
+# temp files deleted automatically
+</code></pre></div>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h4 id="lacme.mtls.server_ssl_context" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">server_ssl_context</span>
 
@@ -1824,6 +2048,149 @@ certificates (<code>CERT_REQUIRED</code>).</p>
           </tr>
       </tbody>
     </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="lacme.mtls.write_pem_files" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">write_pem_files</span>
+
+
+<a href="#lacme.mtls.write_pem_files" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write_pem_files</span><span class="p">(</span><span class="n">bundle</span><span class="p">:</span> <span class="n">CertBundle</span><span class="p">,</span> <span class="n">ca_pem</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PemPaths</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Write certificate PEM data to secure temporary files.</p>
+<p>Creates a directory with <code>0o700</code> permissions containing cert/CA
+files (<code>0o644</code>) and the private key (<code>0o600</code>).  Useful
+for uvicorn and other servers that only accept file paths.</p>
+<p>The caller is responsible for cleanup.  For automatic cleanup, use
+:func:<code>pem_files</code> (context manager) instead.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bundle</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="CertBundle
+
+
+  
+      dataclass
+   (lacme._types.CertBundle)" href="../_types/#lacme._types.CertBundle">CertBundle</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Certificate bundle with <code>fullchain_pem</code> and <code>key_pem</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ca_pem</code>
+            </td>
+            <td>
+                  <code><span title="bytes">bytes</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional CA certificate PEM bytes.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>directory</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span> | <span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Parent directory for the temp dir.  Defaults to system temp.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="PemPaths
+
+
+  
+      dataclass
+   (lacme.mtls.PemPaths)" href="#lacme.mtls.PemPaths">PemPaths</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>class:<code>PemPaths</code> with file paths.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="lacme.mtls.write_pem_files_persistent" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">write_pem_files_persistent</span>
+
+
+<a href="#lacme.mtls.write_pem_files_persistent" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write_pem_files_persistent</span><span class="p">(</span><span class="n">bundle</span><span class="p">:</span> <span class="n">CertBundle</span><span class="p">,</span> <span class="n">ca_pem</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PemPaths</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Like :func:<code>write_pem_files</code> but registers <code>atexit</code> cleanup.</p>
+<p>Suitable for long-lived processes where a context manager is
+inconvenient (e.g., passing paths to uvicorn before <code>app.run()</code>).</p>
 
 
     </div>
