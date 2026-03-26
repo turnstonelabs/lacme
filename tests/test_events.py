@@ -219,7 +219,7 @@ class TestStructuredLogging:
         assert len(caplog.records) == 1
         record = caplog.records[0]
         assert record.lacme_event == "certificate_issued"  # type: ignore[attr-defined]
-        assert record.domain == "example.com"  # type: ignore[attr-defined]
+        assert record.lacme_domain == "example.com"  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_all_event_types_logged(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -247,6 +247,30 @@ class TestStructuredLogging:
 
         assert len(caplog.records) == 1
         assert caplog.records[0].lacme_event == "certificate_issued"  # type: ignore[attr-defined]
+
+    def test_ca_event_name_field_no_logrecord_collision(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """CACertificateIssued.name must not collide with LogRecord.name."""
+        from lacme.events import CACertificateIssued
+
+        dispatcher = EventDispatcher()
+        event = CACertificateIssued(
+            name="api.internal",
+            names=("api.internal",),
+            is_client=False,
+            expires_at=_now() + datetime.timedelta(days=1),
+        )
+
+        with caplog.at_level(logging.INFO, logger="lacme.events"):
+            dispatcher.emit_sync(event)
+
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert record.lacme_event == "ca_certificate_issued"  # type: ignore[attr-defined]
+        assert record.lacme_name == "api.internal"  # type: ignore[attr-defined]
+        # LogRecord.name should still be the logger name, not overwritten
+        assert record.name == "lacme.events"
 
 
 # ---------------------------------------------------------------------------

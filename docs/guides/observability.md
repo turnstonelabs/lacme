@@ -299,7 +299,9 @@ with structured extra fields. The log message follows the format:
 The `extra` dict on each log record includes:
 
 - `lacme_event` -- event name string (e.g., `"certificate_issued"`)
-- All event fields as key-value pairs (datetimes converted to ISO strings)
+- All event dataclass fields, **prefixed with `lacme_`** to avoid collisions with
+  `LogRecord` built-in attributes (e.g., `lacme_domain`, `lacme_expires_at`,
+  `lacme_name`). Datetime values are converted to ISO strings.
 
 ### Event Name Mapping
 
@@ -331,13 +333,10 @@ class StructuredHandler(logging.Handler):
             "event": event,
             "message": record.getMessage(),
         }
-        # Add all extra event fields
-        for key in ("domain", "domains", "expires_at", "error",
-                     "challenge_type", "days_remaining", "cn",
-                     "registered_domain", "current_count", "limit"):
-            val = getattr(record, key, None)
-            if val is not None:
-                entry[key] = val
+        # Collect all lacme_ prefixed fields from the record
+        for key in vars(record):
+            if key.startswith("lacme_") and key != "lacme_event":
+                entry[key.removeprefix("lacme_")] = getattr(record, key)
         print(json.dumps(entry))
 
 handler = StructuredHandler()
