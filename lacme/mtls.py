@@ -87,16 +87,17 @@ def client_ssl_context(
 # PEM file helpers (for uvicorn and other path-only consumers)
 # ---------------------------------------------------------------------------
 
-_HAS_FCHMOD_PEM = hasattr(os, "fchmod")
-
 
 def _write_pem_file(path: Path, data: bytes, *, mode: int) -> None:
-    """Write PEM data atomically with permissions set before content is written."""
+    """Write PEM data with permissions set before content is written."""
     fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:
-        os.write(fd, data)
-    finally:
-        os.close(fd)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.close(fd)
+        raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,8 +132,8 @@ def write_pem_files(
 ) -> PemPaths:
     """Write certificate PEM data to secure temporary files.
 
-    Creates a directory with ``0o700`` permissions containing the cert,
-    key, and optionally CA PEM files with ``0o600`` permissions.  Useful
+    Creates a directory with ``0o700`` permissions containing cert/CA
+    files (``0o644``) and the private key (``0o600``).  Useful
     for uvicorn and other servers that only accept file paths.
 
     The caller is responsible for cleanup.  For automatic cleanup, use
@@ -177,7 +178,7 @@ def pem_files(
     bundle: CertBundle,
     ca_pem: bytes | None = None,
     directory: Path | str | None = None,
-) -> Generator[PemPaths]:
+) -> Generator[PemPaths, None, None]:
     """Context manager: write PEM files and clean up on exit.
 
     Usage::
