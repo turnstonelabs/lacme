@@ -219,7 +219,12 @@ class EventDispatcher:
 
     @staticmethod
     def _log_event(event: Event) -> None:
-        """Log the event with structured extra fields."""
+        """Log the event with structured extra fields.
+
+        All event fields are prefixed with ``lacme_`` in the ``extra``
+        dict to avoid collisions with :class:`logging.LogRecord` built-in
+        attributes (e.g., ``name``, ``message``, ``args``).
+        """
         event_name = _EVENT_NAMES.get(type(event), type(event).__name__)
         fields = dataclasses.asdict(event)
         # Convert datetimes to ISO strings for logging
@@ -233,9 +238,12 @@ class EventDispatcher:
             or fields.get("registered_domain")
             or ""
         )
+        # Prefix all fields with lacme_ to avoid LogRecord attribute collisions
+        # (e.g., CACertificateIssued.name collides with LogRecord.name)
+        prefixed = {f"lacme_{k}": v for k, v in fields.items()}
         logger.info(
             "%s: %s",
             event_name,
             identifier,
-            extra={"lacme_event": event_name, **fields},
+            extra={"lacme_event": event_name, **prefixed},
         )
