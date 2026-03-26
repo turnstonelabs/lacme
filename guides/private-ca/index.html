@@ -1915,9 +1915,12 @@ the CA server, then builds SSL contexts for mutual TLS communication with peers.
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">CertificateAuthority</span><span class="p">,</span> <span class="n">FileStore</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme-ca&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">ca</span> <span class="o">=</span> <span class="n">CertificateAuthority</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">ca</span> <span class="o">=</span> <span class="n">CertificateAuthority</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;turnstone&quot;</span><span class="p">)</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">ca</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">cn</span><span class="o">=</span><span class="s2">&quot;My Service Mesh CA&quot;</span><span class="p">,</span> <span class="n">validity_days</span><span class="o">=</span><span class="mi">3650</span><span class="p">)</span>
 </code></pre></div>
+<p>The optional <code>name</code> parameter (default <code>"root"</code>) controls the store key used
+by <code>save_ca()</code>/<code>load_ca()</code>. This allows multiple CAs in the same store (e.g.,
+one for mTLS, one for client-only certs).</p>
 <p>The <code>init()</code> method either loads an existing root CA from the store or generates
 a new self-signed root certificate. The root CA uses a P-256 EC key and is valid
 for the specified number of days (10 years by default).</p>
@@ -2253,16 +2256,23 @@ running before renewal starts) and avoids the network round-trip.</p>
 </ul>
 <p>For direct CA issuance (without the ACME protocol), you can specify validity
 explicitly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Issue a 24-hour server certificate</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">server_bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span> <span class="n">validity_hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Issue a 24-hour certificate (has both serverAuth + clientAuth EKU)</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span> <span class="n">validity_hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
 <a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># Issue a 6-hour client certificate</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># Issue a client-only certificate (clientAuth EKU only)</span>
 <a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">client_bundle</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
 <a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="s2">&quot;worker-1.internal&quot;</span><span class="p">,</span>
 <a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="n">client</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    <span class="n">validity_hours</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
 <a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="p">)</span>
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>By default, <code>ca.issue()</code> includes <strong>both</strong> <code>serverAuth</code> and <code>clientAuth</code> in the
+Extended Key Usage extension. This is standard for mTLS deployments where the same
+cert is used as a server cert (uvicorn TLS listener) and a client cert (connecting
+to other services). Pass <code>client=True</code> only when you need a client-only cert.</p>
+</div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>A common rotation strategy: issue 24-hour certificates and set the renewal
