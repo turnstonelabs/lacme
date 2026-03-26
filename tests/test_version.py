@@ -4,4 +4,4 @@ from lacme import __version__
 
 
 def test_version_is_set():
-    assert __version__ == "1.0.2"
+    assert __version__ == "1.0.3"

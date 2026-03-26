@@ -94,4 +94,4 @@ __all__ = [
     "server_ssl_context",
 ]
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
