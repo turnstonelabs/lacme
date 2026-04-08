@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lacme"
-version = "1.0.4"
+version = "1.0.5"
 description = "Modern, async-native Python ACME client library for embedding TLS certificate automation."
 readme = "README.md"
 license = "Apache-2.0"
