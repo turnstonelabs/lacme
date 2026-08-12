@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Coroutine
     from types import TracebackType
 
-    import httpx
+    import httpx2
     from cryptography.hazmat.primitives.asymmetric import ec
 
     from lacme._types import CertBundle
@@ -161,7 +161,10 @@ class SyncClient:
     """Synchronous ACME v2 client.
 
     Wraps the async :class:`~lacme.client.Client` and exposes every public
-    method as a blocking call.
+    method as a blocking call. An injected HTTP client must be a fresh,
+    unused :class:`httpx2.AsyncClient`. Ownership transfers to ``SyncClient``
+    so the client can be closed on the managed event loop before that loop is
+    shut down.
 
     Usage::
 
@@ -177,7 +180,7 @@ class SyncClient:
         store: Store | None = None,
         contact: str | list[str] | None = None,
         challenge_handler: SyncChallengeHandler | ChallengeHandler | None = None,
-        http_client: httpx.AsyncClient | None = None,
+        http_client: httpx2.AsyncClient | None = None,
         poll_timeout: float = 300.0,
         poll_interval: float = 2.0,
         eab_kid: str | None = None,
@@ -191,6 +194,7 @@ class SyncClient:
     ) -> None:
         self._runner = _AsyncRunner()
         self._runner.open()
+        self._injected_http_client = http_client
 
         try:
             self._init_client(
@@ -252,10 +256,20 @@ class SyncClient:
 
     def close(self) -> None:
         """Close the underlying async client and event loop."""
+        if not self._runner.is_open:
+            return
         try:
-            self._runner.run(self._client.close())
+            self._runner.run(self._close_client())
         finally:
             self._runner.close()
+
+    async def _close_client(self) -> None:
+        """Run all client cleanup before the managed event loop shuts down."""
+        try:
+            await self._client.close()
+        finally:
+            if self._injected_http_client is not None:
+                await self._injected_http_client.aclose()
 
     # --- Directory ---
 

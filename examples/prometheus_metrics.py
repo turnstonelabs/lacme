@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 
-import httpx
+import httpx2
 from prometheus_client import CollectorRegistry, generate_latest
 
 from lacme import Client, EventDispatcher, MemoryStore
@@ -43,7 +43,7 @@ async def main() -> None:
     account_key = generate_ec_key()
 
     async with (  # noqa: SIM117
-        httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+        httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
         Client(
             directory_url="https://acme.test/directory",
             http_client=http,

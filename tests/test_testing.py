@@ -30,7 +30,7 @@ class TestMockServerFullFlow:
     @pytest.mark.anyio
     async def test_full_issue_flow(self, server: MockACMEServer, account_key):
         """End-to-end: issue a certificate through MockACMEServer."""
-        import httpx
+        import httpx2
 
         from lacme.challenges.http01 import HTTP01Handler
         from lacme.client import Client
@@ -39,7 +39,7 @@ class TestMockServerFullFlow:
         transport = server.as_transport()
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -60,7 +60,7 @@ class TestMockServerFullFlow:
     @pytest.mark.anyio
     async def test_multi_domain_issue(self, server: MockACMEServer, account_key):
         """Issue a certificate for multiple domains."""
-        import httpx
+        import httpx2
 
         from lacme.challenges.http01 import HTTP01Handler
         from lacme.client import Client
@@ -69,7 +69,7 @@ class TestMockServerFullFlow:
         transport = server.as_transport()
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -86,7 +86,7 @@ class TestMockServerFullFlow:
     @pytest.mark.anyio
     async def test_mixed_challenge_types(self, server: MockACMEServer, account_key):
         """Issue with per-domain challenge type overrides via challenge_map."""
-        import httpx
+        import httpx2
 
         from lacme.challenges.http01 import HTTP01Handler
         from lacme.client import Client
@@ -96,7 +96,7 @@ class TestMockServerFullFlow:
         transport = server.as_transport()
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -124,13 +124,13 @@ class TestMockServerFullFlow:
 class TestMockAccountCreate:
     @pytest.mark.anyio
     async def test_create_account(self, server: MockACMEServer, account_key):
-        import httpx
+        import httpx2
 
         from lacme.client import Client
 
         transport = server.as_transport()
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -144,13 +144,13 @@ class TestMockAccountCreate:
 
     @pytest.mark.anyio
     async def test_find_existing_account(self, server: MockACMEServer, account_key):
-        import httpx
+        import httpx2
 
         from lacme.client import Client
 
         transport = server.as_transport()
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -174,7 +174,7 @@ class TestMockAutoValidate:
         """With auto_validate=True, challenges immediately become valid."""
         server = MockACMEServer(auto_validate=True)
 
-        import httpx
+        import httpx2
 
         from lacme.challenges.http01 import HTTP01Handler
         from lacme.client import Client
@@ -183,7 +183,7 @@ class TestMockAutoValidate:
         transport = server.as_transport()
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -204,12 +204,12 @@ class TestMockManualValidate:
         server = MockACMEServer(auto_validate=False)
 
         # Create an order to get a challenge
-        import httpx
+        import httpx2
 
         transport = server.as_transport()
 
         # Simulate creating an order
-        req = httpx.Request(
+        req = httpx2.Request(
             "POST",
             "https://acme.test/new-order",
             content=b'{"protected":"eyJhbGciOiJFUzI1NiJ9","payload":"eyJpZGVudGlmaWVycyI6W3sidHlwZSI6ImRucyIsInZhbHVlIjoiZXhhbXBsZS5jb20ifV19","signature":""}',
@@ -221,7 +221,7 @@ class TestMockManualValidate:
         authz_url = order_data["authorizations"][0]
 
         # Get authz and respond to challenge
-        req2 = httpx.Request(
+        req2 = httpx2.Request(
             "POST",
             authz_url,
             content=b'{"protected":"eyJhbGciOiJFUzI1NiJ9","payload":"","signature":""}',
@@ -232,7 +232,7 @@ class TestMockManualValidate:
 
         # Respond to challenge
         chall_url = authz_data["challenges"][0]["url"]
-        req3 = httpx.Request(
+        req3 = httpx2.Request(
             "POST",
             chall_url,
             content=b'{"protected":"eyJhbGciOiJFUzI1NiJ9","payload":"e30","signature":""}',
@@ -258,7 +258,7 @@ class TestMockManualValidate:
 class TestMockRevocation:
     @pytest.mark.anyio
     async def test_revoke(self, server: MockACMEServer, account_key):
-        import httpx
+        import httpx2
 
         from lacme.challenges.http01 import HTTP01Handler
         from lacme.client import Client
@@ -267,7 +267,7 @@ class TestMockRevocation:
         transport = server.as_transport()
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -290,7 +290,7 @@ class TestMockCertParseable:
     @pytest.mark.anyio
     async def test_cert_is_valid_pem(self, server: MockACMEServer, account_key):
         """The generated certificate should be parseable."""
-        import httpx
+        import httpx2
 
         from lacme.challenges.http01 import HTTP01Handler
         from lacme.client import Client
@@ -299,7 +299,7 @@ class TestMockCertParseable:
         transport = server.as_transport()
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -323,7 +323,7 @@ class TestMockCertParseable:
 
 class TestAsTransport:
     def test_returns_mock_transport(self, server: MockACMEServer):
-        import httpx
+        import httpx2
 
         transport = server.as_transport()
-        assert isinstance(transport, httpx.MockTransport)
+        assert isinstance(transport, httpx2.MockTransport)

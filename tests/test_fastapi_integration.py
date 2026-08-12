@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError:
     pytest.skip("fastapi not installed", allow_module_level=True)
 
-import httpx  # noqa: E402
+import httpx2  # noqa: E402
 
 from lacme.challenges.http01 import HTTP01Handler  # noqa: E402
 from lacme.ext_fastapi import (  # noqa: E402
@@ -39,9 +39,9 @@ class TestACMEChallengeRouter:
 
         app = FastAPI()
         app.include_router(router)
-        transport = httpx.ASGITransport(app=app)
+        transport = httpx2.ASGITransport(app=app)
 
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/.well-known/acme-challenge/test-token")
             assert resp.status_code == 200
             assert resp.text == "authz-value"
@@ -55,9 +55,9 @@ class TestACMEChallengeRouter:
 
         app = FastAPI()
         app.include_router(router)
-        transport = httpx.ASGITransport(app=app)
+        transport = httpx2.ASGITransport(app=app)
 
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/.well-known/acme-challenge/missing")
             assert resp.status_code == 404
 

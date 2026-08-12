@@ -13,7 +13,7 @@ This guide walks you through issuing your first certificate with lacme, starting
 pip install lacme
 ```
 
-This installs lacme and its two runtime dependencies: httpx and cryptography.
+This installs lacme and its two runtime dependencies: HTTPX2 and cryptography.
 
 ## Your First Certificate (Private CA)
 

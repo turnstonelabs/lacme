@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import httpx
+import httpx2
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import load_pem_x509_certificates
@@ -40,8 +40,8 @@ def account_key() -> ec.EllipticCurvePrivateKey:
 class TestDirectoryEndpoint:
     @pytest.mark.anyio
     async def test_directory_returns_urls(self, responder: ACMEResponder) -> None:
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
-        async with httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http:
             resp = await http.get("/directory")
 
         assert resp.status_code == 200
@@ -64,8 +64,8 @@ class TestDirectoryEndpoint:
 class TestNonceEndpoint:
     @pytest.mark.anyio
     async def test_nonce_returns_replay_nonce_header(self, responder: ACMEResponder) -> None:
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
-        async with httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http:
             resp = await http.head("/new-nonce")
 
         assert resp.status_code == 200
@@ -86,10 +86,10 @@ class TestFullIssueFlow:
         account_key: ec.EllipticCurvePrivateKey,
     ) -> None:
         handler = HTTP01Handler()
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -121,10 +121,10 @@ class TestFullIssueFlow:
         account_key: ec.EllipticCurvePrivateKey,
     ) -> None:
         handler = HTTP01Handler()
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -161,10 +161,10 @@ class TestAccountCreate:
         responder: ACMEResponder,
         account_key: ec.EllipticCurvePrivateKey,
     ) -> None:
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -193,10 +193,10 @@ class TestAutoApprove:
         """With auto_approve=True, challenges immediately become valid."""
         responder = ACMEResponder(ca=ca, auto_approve=True)
         handler = HTTP01Handler()
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -239,10 +239,10 @@ class TestChallengeValidator:
 
         responder = ACMEResponder(ca=ca, challenge_validator=validator)
         handler = HTTP01Handler()
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -276,10 +276,10 @@ class TestIPIdentifier:
         from lacme import crypto
 
         responder = ACMEResponder(ca=ca, auto_approve=True)
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -344,10 +344,10 @@ class TestCertSignedByCA:
     ) -> None:
         """The issued cert's issuer should match the CA root subject."""
         handler = HTTP01Handler()
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -383,10 +383,10 @@ class TestOrderAutoTransition:
         account_key: ec.EllipticCurvePrivateKey,
     ) -> None:
         """After all challenges are validated, polling the order returns 'ready'."""
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
         async with (
-            httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
             Client(  # noqa: SIM117
                 directory_url="https://acme.test/directory",
                 http_client=http,
@@ -419,8 +419,8 @@ class TestOrderAutoTransition:
 class TestResponderAsMiddleware:
     @pytest.mark.anyio
     async def test_non_acme_path_returns_404(self, responder: ACMEResponder) -> None:
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
-        async with httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http:
             resp = await http.get("/unknown")
 
         assert resp.status_code == 404
@@ -439,8 +439,8 @@ class TestCACertEndpoint:
         self, responder: ACMEResponder, ca: CertificateAuthority
     ) -> None:
         """GET /ca.pem returns the CA root certificate as application/x-pem-file."""
-        transport = httpx.ASGITransport(app=responder)  # type: ignore[arg-type]
-        async with httpx.AsyncClient(transport=transport, base_url="https://acme.test") as http:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http:
             resp = await http.get("/ca.pem")
 
         assert resp.status_code == 200

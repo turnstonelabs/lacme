@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import httpx
+import httpx2
 import pytest
 
 from lacme.asgi import ACMEChallengeMiddleware, challenge_middleware
@@ -23,9 +23,9 @@ class TestACMEChallengeMiddleware:
         handler = HTTP01Handler()
         await handler.provision("example.com", "tok", "authz-value")
         middleware = ACMEChallengeMiddleware(_dummy_app, handler)  # type: ignore[arg-type]
-        transport = httpx.ASGITransport(app=middleware)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=middleware)  # type: ignore[arg-type]
 
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/.well-known/acme-challenge/tok")
             assert resp.status_code == 200
             assert resp.text == "authz-value"
@@ -35,9 +35,9 @@ class TestACMEChallengeMiddleware:
     async def test_missing_token_returns_404(self) -> None:
         handler = HTTP01Handler()
         middleware = ACMEChallengeMiddleware(_dummy_app, handler)  # type: ignore[arg-type]
-        transport = httpx.ASGITransport(app=middleware)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=middleware)  # type: ignore[arg-type]
 
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/.well-known/acme-challenge/missing")
             assert resp.status_code == 404
 
@@ -45,9 +45,9 @@ class TestACMEChallengeMiddleware:
     async def test_non_challenge_passes_through(self) -> None:
         handler = HTTP01Handler()
         middleware = ACMEChallengeMiddleware(_dummy_app, handler)  # type: ignore[arg-type]
-        transport = httpx.ASGITransport(app=middleware)  # type: ignore[arg-type]
+        transport = httpx2.ASGITransport(app=middleware)  # type: ignore[arg-type]
 
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/api/v1/health")
             assert resp.status_code == 200
             assert resp.text == "inner app"
