@@ -9,7 +9,7 @@ Modern, async-native Python ACME client library for embedding TLS certificate au
 
 ## What is lacme?
 
-lacme fills the gap between full-featured CLI tools like certbot (not designed for embedding) and low-level ACME protocol libraries that leave orchestration to you. It provides a high-level `Client.issue()` one-liner alongside full access to every step of the ACME workflow. lacme has just two runtime dependencies -- httpx and cryptography -- and supports Python 3.11+.
+lacme fills the gap between full-featured CLI tools like certbot (not designed for embedding) and low-level ACME protocol libraries that leave orchestration to you. It provides a high-level `Client.issue()` one-liner alongside full access to every step of the ACME workflow. lacme has just two runtime dependencies -- HTTPX2 and cryptography -- and supports Python 3.11+.
 
 ## Features
 
@@ -22,7 +22,7 @@ lacme fills the gap between full-featured CLI tools like certbot (not designed f
 - **Auto-renewal** -- `RenewalManager` runs in the background and re-issues expiring certificates
 - **Rate limit tracking** -- client-side awareness of Let's Encrypt rate limits with warnings and blocking
 - **Event system + Prometheus metrics** -- `EventDispatcher` with typed events; optional `MetricsCollector`
-- **`MockACMEServer` for testing** -- in-process mock ACME server via `httpx.MockTransport`
+- **`MockACMEServer` for testing** -- in-process mock ACME server via `httpx2.MockTransport`
 
 ## Quick Start
 
@@ -90,6 +90,7 @@ lacme revoke example.com
 ## Documentation
 
 Full documentation is available at [turnstonelabs.github.io/lacme](https://turnstonelabs.github.io/lacme/).
+See the [changelog](CHANGELOG.md) for release notes and upgrade guidance.
 
 ## License
 

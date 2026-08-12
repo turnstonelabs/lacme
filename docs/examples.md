@@ -495,43 +495,35 @@ async def main() -> None:
     server = MockACMEServer()
     transport = server.as_transport()
 
-    import httpx
-
-    http = httpx.AsyncClient(transport=transport, base_url="https://acme.test")
+    import httpx2
 
     # --- Issue a certificate ---
     store = MemoryStore()
     handler = HTTP01Handler()
     account_key = generate_ec_key()
 
-    async with Client(
-        directory_url="https://acme.test/directory",
-        http_client=http,
-        account_key=account_key,
-        store=store,
-        challenge_handler=handler,
-        event_dispatcher=dispatcher,
-    ) as client:
+    async with (
+        httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+        Client(
+            directory_url="https://acme.test/directory",
+            http_client=http,
+            account_key=account_key,
+            store=store,
+            challenge_handler=handler,
+            event_dispatcher=dispatcher,
+        ) as client,
+    ):
         bundle = await client.issue(["example.com", "www.example.com"])
         print(f"Certificate issued for: {', '.join(bundle.domains)}")
         print(f"  Expires: {bundle.expires_at.isoformat()}")
+
+        # Issue a second cert to see the counter increment
+        await client.issue(["api.example.com"])
 
     # --- Read Prometheus metrics ---
     issued_count = metrics.certificates_issued.labels(domain="example.com")._value.get()
     print(f"\nPrometheus metrics:")
     print(f"  lacme_certificates_issued_total{{domain='example.com'}} = {issued_count}")
-
-    # Issue a second cert to see the counter increment
-    http = httpx.AsyncClient(transport=transport, base_url="https://acme.test")
-    async with Client(
-        directory_url="https://acme.test/directory",
-        http_client=http,
-        account_key=account_key,
-        store=store,
-        challenge_handler=handler,
-        event_dispatcher=dispatcher,
-    ) as client:
-        await client.issue(["api.example.com"])
 
     issued_api = metrics.certificates_issued.labels(domain="api.example.com")._value.get()
     print(f"  lacme_certificates_issued_total{{domain='api.example.com'}} = {issued_api}")

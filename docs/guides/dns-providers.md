@@ -268,8 +268,8 @@ class MyDNSProvider:
             domain: Full record name (e.g., '_acme-challenge.example.com')
             value: Base64url-encoded SHA-256 digest to set as the TXT value
         """
-        import httpx
-        async with httpx.AsyncClient() as client:
+        import httpx2
+        async with httpx2.AsyncClient() as client:
             resp = await client.post(
                 f"https://api.mydns.example/v1/records",
                 headers={"Authorization": f"Bearer {self._api_key}"},
@@ -289,8 +289,8 @@ class MyDNSProvider:
             domain: Full record name
             value: The TXT value to remove (used to identify the record)
         """
-        import httpx
-        async with httpx.AsyncClient() as client:
+        import httpx2
+        async with httpx2.AsyncClient() as client:
             resp = await client.delete(
                 f"https://api.mydns.example/v1/records",
                 headers={"Authorization": f"Bearer {self._api_key}"},

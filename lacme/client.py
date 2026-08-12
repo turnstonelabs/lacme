@@ -10,10 +10,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import ssl
 from time import monotonic
 from typing import TYPE_CHECKING, Any
 
-import httpx
+import httpx2
 
 from lacme import crypto
 from lacme.errors import (
@@ -87,6 +88,11 @@ def _validate_revocation_reason(reason: int) -> None:
 class Client:
     """Async ACME v2 client.
 
+    Injected HTTP clients must be :class:`httpx2.AsyncClient` instances. The
+    caller retains ownership of an injected client; :meth:`close` only closes
+    clients created by ``Client``. HTTP transport and status errors propagate
+    from HTTPX2.
+
     Usage::
 
         async with Client(directory_url="...", account_key=key) as client:
@@ -101,7 +107,7 @@ class Client:
         store: Store | None = None,
         contact: str | list[str] | None = None,
         challenge_handler: ChallengeHandler | None = None,
-        http_client: httpx.AsyncClient | None = None,
+        http_client: httpx2.AsyncClient | None = None,
         poll_timeout: float = _DEFAULT_POLL_TIMEOUT,
         poll_interval: float = _DEFAULT_POLL_INTERVAL,
         eab_kid: str | None = None,
@@ -143,12 +149,23 @@ class Client:
             raise ValueError(msg)
 
         if http_client is not None:
+            if not isinstance(http_client, httpx2.AsyncClient):
+                msg = "http_client must be an httpx2.AsyncClient"
+                raise TypeError(msg)
             self._http = http_client
             self._owns_http = False
         else:
-            verify: bool | str = ca_bundle if ca_bundle is not None else True
-            cert = (client_cert, client_key) if client_cert and client_key else None
-            self._http = httpx.AsyncClient(verify=verify, cert=cert)
+            ssl_context: ssl.SSLContext | None = None
+            if ca_bundle is not None:
+                ssl_context = ssl.create_default_context(cafile=ca_bundle)
+            if client_cert is not None and client_key is not None:
+                if ssl_context is None:
+                    # Preserve HTTPX2's operating-system trust store while
+                    # adding a client identity to the context.
+                    ssl_context = httpx2.create_ssl_context()
+                ssl_context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+            verify: bool | ssl.SSLContext = ssl_context if ssl_context is not None else True
+            self._http = httpx2.AsyncClient(verify=verify)
             self._owns_http = True
 
         self._directory: Directory | None = None
@@ -199,7 +216,7 @@ class Client:
         msg = "Failed to obtain a nonce from the ACME server"
         raise RuntimeError(msg)
 
-    def _harvest_nonce(self, response: httpx.Response) -> None:
+    def _harvest_nonce(self, response: httpx2.Response) -> None:
         nonce = response.headers.get("replay-nonce")
         if nonce:
             self._nonces.append(nonce)
@@ -215,7 +232,7 @@ class Client:
         nonce: str,
         kid: str | None = None,
         expected_status: set[int] | None = None,
-    ) -> httpx.Response:
+    ) -> httpx2.Response:
         """Low-level JWS-signed POST.  No badNonce retry."""
         if payload is None:
             raw_payload = b""
@@ -250,7 +267,7 @@ class Client:
         payload: dict[str, Any] | bytes | None,
         *,
         expected_status: set[int] | None = None,
-    ) -> httpx.Response:
+    ) -> httpx2.Response:
         """Account-key signed POST with badNonce retry."""
         if self._account_key is None:
             msg = "No account key — call _ensure_account_key() first"
@@ -278,7 +295,7 @@ class Client:
 
     def _check_response(
         self,
-        response: httpx.Response,
+        response: httpx2.Response,
         expected_status: set[int] | None,
     ) -> None:
         ct = response.headers.get("content-type", "")
@@ -293,7 +310,7 @@ class Client:
             response.raise_for_status()
             # raise_for_status only raises on 4xx/5xx; reject unexpected 2xx/3xx
             msg = f"Unexpected status {response.status_code}, expected one of {expected_status}"
-            raise httpx.HTTPStatusError(msg, request=response.request, response=response)
+            raise httpx2.HTTPStatusError(msg, request=response.request, response=response)
         else:
             if response.is_success:
                 return

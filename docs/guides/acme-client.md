@@ -57,6 +57,50 @@ lacme provides two client classes with identical capabilities:
     automatically wrapped to run in a thread executor. If you pass an async handler,
     it is used directly.
 
+## HTTPX2 Client Boundary
+
+lacme 1.1 uses HTTPX2 exclusively. `Client(http_client=...)` and
+`SyncClient(http_client=...)` accept an `httpx2.AsyncClient`; HTTPX clients are
+not compatible.
+
+An async `Client` leaves an injected HTTP client caller-owned:
+
+```python
+import httpx2
+
+from lacme import Client
+
+async with httpx2.AsyncClient() as http:
+    async with Client(http_client=http) as client:
+        directory = await client.directory()
+```
+
+`SyncClient` has different lifecycle requirements because it owns a private
+event loop. Pass it a fresh, unused HTTPX2 client and do not share that client:
+ownership transfers to `SyncClient`, which closes the HTTP client before
+shutting down its event loop.
+
+`MockACMEServer.as_transport()` likewise returns an `httpx2.MockTransport` for
+use with an HTTPX2 client. Requests, responses, transports, and exceptions from
+HTTPX and HTTPX2 must not be mixed.
+
+HTTPX2 transport and status exceptions propagate from normal HTTP failures, so
+catch them from `httpx2`:
+
+```python
+try:
+    await client.directory()
+except httpx2.TransportError as exc:
+    print(f"ACME connection failed: {exc}")
+except httpx2.HTTPStatusError as exc:
+    print(f"ACME server returned {exc.response.status_code}")
+```
+
+When lacme creates the client, HTTPX2 verifies HTTPS with the operating
+system's trust store. `ca_bundle` selects an explicit CA bundle, while
+`client_cert` and `client_key` configure a client identity for mTLS. When a
+client is injected, configure its TLS policy directly on that client.
+
 ## Account Management
 
 ### Creating an Account

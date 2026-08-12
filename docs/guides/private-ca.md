@@ -181,9 +181,9 @@ curl -o root-ca.pem http://ca-server:8443/root-ca.pem
 Or fetch it programmatically:
 
 ```python
-import httpx
+import httpx2
 
-resp = httpx.get("http://ca-server:8443/root-ca.pem")
+resp = httpx2.get("http://ca-server:8443/root-ca.pem")
 root_ca_pem = resp.content
 with open("root-ca.pem", "wb") as f:
     f.write(root_ca_pem)

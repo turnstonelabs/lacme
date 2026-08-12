@@ -47,7 +47,7 @@ class TestHTTP01Handler:
 class TestHTTP01StandaloneServer:
     @pytest.mark.anyio
     async def test_serves_challenge_response(self) -> None:
-        import httpx
+        import httpx2
 
         handler = HTTP01Handler()
         await handler.provision("example.com", "test-token", "test-authz")
@@ -55,7 +55,7 @@ class TestHTTP01StandaloneServer:
         port = server.sockets[0].getsockname()[1]
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx2.AsyncClient() as client:
                 resp = await client.get(
                     f"http://127.0.0.1:{port}/.well-known/acme-challenge/test-token"
                 )
@@ -67,14 +67,14 @@ class TestHTTP01StandaloneServer:
 
     @pytest.mark.anyio
     async def test_missing_token_returns_404(self) -> None:
-        import httpx
+        import httpx2
 
         handler = HTTP01Handler()
         server = await handler.start_server(host="127.0.0.1", port=0)
         port = server.sockets[0].getsockname()[1]
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx2.AsyncClient() as client:
                 resp = await client.get(
                     f"http://127.0.0.1:{port}/.well-known/acme-challenge/missing"
                 )
@@ -85,14 +85,14 @@ class TestHTTP01StandaloneServer:
 
     @pytest.mark.anyio
     async def test_non_challenge_path_returns_404(self) -> None:
-        import httpx
+        import httpx2
 
         handler = HTTP01Handler()
         server = await handler.start_server(host="127.0.0.1", port=0)
         port = server.sockets[0].getsockname()[1]
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx2.AsyncClient() as client:
                 resp = await client.get(f"http://127.0.0.1:{port}/other")
                 assert resp.status_code == 404
         finally:

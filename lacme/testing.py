@@ -1,7 +1,7 @@
 """Test utilities for lacme.
 
 Provides :class:`MockACMEServer`, an in-process ACME server backed by
-:class:`httpx.MockTransport` for integration testing.
+:class:`httpx2.MockTransport` for integration testing.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import secrets
 from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
+import httpx2
 
 from lacme.crypto import b64url_encode
 
@@ -70,13 +70,15 @@ class MockACMEServer:
 
         server = MockACMEServer()
         transport = server.as_transport()
-        http = httpx.AsyncClient(transport=transport, base_url="https://acme.test")
-        async with Client(
-            directory_url="https://acme.test/directory",
-            http_client=http,
-            account_key=key,
-            challenge_handler=handler,
-        ) as client:
+        async with (
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=key,
+                challenge_handler=handler,
+            ) as client,
+        ):
             bundle = await client.issue(["example.com"])
     """
 
@@ -100,9 +102,9 @@ class MockACMEServer:
         self._authz_counter = 0
         self._cert_counter = 0
 
-    def as_transport(self) -> httpx.MockTransport:
-        """Return an :class:`httpx.MockTransport` wrapping this server."""
-        return httpx.MockTransport(self._handle_request)
+    def as_transport(self) -> httpx2.MockTransport:
+        """Return an :class:`httpx2.MockTransport` wrapping this server."""
+        return httpx2.MockTransport(self._handle_request)
 
     def validate_challenge(self, challenge_url: str) -> None:
         """Manually validate a challenge (when ``auto_validate=False``)."""
@@ -118,7 +120,7 @@ class MockACMEServer:
     # Request handler
     # ------------------------------------------------------------------
 
-    def _handle_request(self, request: httpx.Request) -> httpx.Response:
+    def _handle_request(self, request: httpx2.Request) -> httpx2.Response:
         path = request.url.path
         method = request.method
 
@@ -131,8 +133,8 @@ class MockACMEServer:
 
         if path == "/new-nonce":
             if method == "HEAD":
-                return httpx.Response(200, headers=base_headers)
-            return httpx.Response(204, headers=base_headers)
+                return httpx2.Response(200, headers=base_headers)
+            return httpx2.Response(204, headers=base_headers)
 
         if path == "/new-account":
             return self._handle_new_account(request, base_headers)
@@ -161,14 +163,14 @@ class MockACMEServer:
         if path == "/key-change":
             return self._handle_key_change(base_headers)
 
-        return httpx.Response(404, json={"type": "not-found"}, headers=base_headers)
+        return httpx2.Response(404, json={"type": "not-found"}, headers=base_headers)
 
     # ------------------------------------------------------------------
     # Route handlers
     # ------------------------------------------------------------------
 
-    def _handle_directory(self, headers: dict[str, str]) -> httpx.Response:
-        return httpx.Response(
+    def _handle_directory(self, headers: dict[str, str]) -> httpx2.Response:
+        return httpx2.Response(
             200,
             json={
                 "newNonce": f"{self._base_url}/new-nonce",
@@ -181,8 +183,8 @@ class MockACMEServer:
         )
 
     def _handle_new_account(
-        self, request: httpx.Request, headers: dict[str, str]
-    ) -> httpx.Response:
+        self, request: httpx2.Request, headers: dict[str, str]
+    ) -> httpx2.Response:
         body = self._parse_jws_body(request)
         only_existing = body.get("onlyReturnExisting", False)
 
@@ -193,7 +195,7 @@ class MockACMEServer:
 
         for acct in self._accounts.values():
             if acct.jwk_thumbprint == thumbprint:
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     json={
                         "status": acct.status,
@@ -203,7 +205,7 @@ class MockACMEServer:
                 )
 
         if only_existing:
-            return httpx.Response(
+            return httpx2.Response(
                 400,
                 json={
                     "type": "urn:ietf:params:acme:error:accountDoesNotExist",
@@ -222,13 +224,15 @@ class MockACMEServer:
         )
         self._accounts[url] = acct
 
-        return httpx.Response(
+        return httpx2.Response(
             201,
             json={"status": "valid", "contact": acct.contact},
             headers={**headers, "Location": url},
         )
 
-    def _handle_new_order(self, request: httpx.Request, headers: dict[str, str]) -> httpx.Response:
+    def _handle_new_order(
+        self, request: httpx2.Request, headers: dict[str, str]
+    ) -> httpx2.Response:
         body = self._parse_jws_body(request)
         identifiers = body.get("identifiers", [])
         domains = [i["value"] for i in identifiers]
@@ -263,7 +267,7 @@ class MockACMEServer:
         )
         self._orders[order_url] = order
 
-        return httpx.Response(
+        return httpx2.Response(
             201,
             json={
                 "status": "pending",
@@ -275,14 +279,14 @@ class MockACMEServer:
         )
 
     def _handle_authz(
-        self, request: httpx.Request, path: str, headers: dict[str, str]
-    ) -> httpx.Response:
+        self, request: httpx2.Request, path: str, headers: dict[str, str]
+    ) -> httpx2.Response:
         url = f"{self._base_url}{path}"
         authz = self._authorizations.get(url)
         if authz is None:
-            return httpx.Response(404, json={"type": "not-found"}, headers=headers)
+            return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "status": authz.status,
@@ -306,8 +310,8 @@ class MockACMEServer:
         )
 
     def _handle_challenge(
-        self, request: httpx.Request, path: str, headers: dict[str, str]
-    ) -> httpx.Response:
+        self, request: httpx2.Request, path: str, headers: dict[str, str]
+    ) -> httpx2.Response:
         chall_url = f"{self._base_url}{path}"
 
         # Find the authorization for this challenge (HTTP-01 or DNS-01)
@@ -322,7 +326,7 @@ class MockACMEServer:
                     authz.challenge_status = "processing"
 
                 chall_type = "dns-01" if is_dns else "http-01"
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     json={
                         "type": chall_type,
@@ -333,23 +337,23 @@ class MockACMEServer:
                     headers=headers,
                 )
 
-        return httpx.Response(404, json={"type": "not-found"}, headers=headers)
+        return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
     def _handle_finalize(
-        self, request: httpx.Request, path: str, headers: dict[str, str]
-    ) -> httpx.Response:
+        self, request: httpx2.Request, path: str, headers: dict[str, str]
+    ) -> httpx2.Response:
         # Extract order number from path
         order_num = path.split("/")[-1]
         order_url = f"{self._base_url}/order/{order_num}"
         order = self._orders.get(order_url)
         if order is None:
-            return httpx.Response(404, json={"type": "not-found"}, headers=headers)
+            return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
         # Verify all authorizations are valid (mirrors real ACME server behavior)
         for authz_url in order.authz_urls:
             authz = self._authorizations.get(authz_url)
             if authz is None or authz.status != "valid":
-                return httpx.Response(
+                return httpx2.Response(
                     403,
                     json={
                         "type": "urn:ietf:params:acme:error:orderNotReady",
@@ -367,7 +371,7 @@ class MockACMEServer:
         order.status = "valid"
         order.certificate_url = cert_url
 
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "status": "valid",
@@ -380,12 +384,12 @@ class MockACMEServer:
         )
 
     def _handle_order(
-        self, request: httpx.Request, path: str, headers: dict[str, str]
-    ) -> httpx.Response:
+        self, request: httpx2.Request, path: str, headers: dict[str, str]
+    ) -> httpx2.Response:
         url = f"{self._base_url}{path}"
         order = self._orders.get(url)
         if order is None:
-            return httpx.Response(404, json={"type": "not-found"}, headers=headers)
+            return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
         # Auto-transition: if all authzs are valid and order is pending → ready
         if order.status == "pending":
@@ -406,25 +410,25 @@ class MockACMEServer:
         if order.certificate_url:
             body["certificate"] = order.certificate_url
 
-        return httpx.Response(200, json=body, headers={**headers, "Location": url})
+        return httpx2.Response(200, json=body, headers={**headers, "Location": url})
 
-    def _handle_cert(self, path: str, headers: dict[str, str]) -> httpx.Response:
+    def _handle_cert(self, path: str, headers: dict[str, str]) -> httpx2.Response:
         url = f"{self._base_url}{path}"
         pem = self._certificates.get(url)
         if pem is None:
-            return httpx.Response(404, json={"type": "not-found"}, headers=headers)
+            return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
-        return httpx.Response(
+        return httpx2.Response(
             200,
             content=pem.encode("ascii"),
             headers={**headers, "Content-Type": "application/pem-certificate-chain"},
         )
 
-    def _handle_revoke(self, headers: dict[str, str]) -> httpx.Response:
-        return httpx.Response(200, headers=headers)
+    def _handle_revoke(self, headers: dict[str, str]) -> httpx2.Response:
+        return httpx2.Response(200, headers=headers)
 
-    def _handle_key_change(self, headers: dict[str, str]) -> httpx.Response:
-        return httpx.Response(200, json={}, headers=headers)
+    def _handle_key_change(self, headers: dict[str, str]) -> httpx2.Response:
+        return httpx2.Response(200, json={}, headers=headers)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -435,7 +439,7 @@ class MockACMEServer:
         return b64url_encode(f"nonce-{self._nonce_counter}".encode())
 
     @staticmethod
-    def _parse_jws_body(request: httpx.Request) -> dict[str, Any]:
+    def _parse_jws_body(request: httpx2.Request) -> dict[str, Any]:
         """Extract the payload from a JWS POST body."""
         data = json.loads(request.content)
         payload_b64 = data.get("payload", "")
@@ -448,7 +452,7 @@ class MockACMEServer:
         return json.loads(decoded)  # type: ignore[no-any-return]
 
     @staticmethod
-    def _parse_jws_protected(request: httpx.Request) -> dict[str, Any]:
+    def _parse_jws_protected(request: httpx2.Request) -> dict[str, Any]:
         """Extract the protected header from a JWS POST body."""
         data = json.loads(request.content)
         protected_b64 = data.get("protected", "")

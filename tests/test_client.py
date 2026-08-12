@@ -6,7 +6,7 @@ import json
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock
 
-import httpx
+import httpx2
 import pytest
 
 from lacme.client import Client
@@ -52,24 +52,24 @@ def _json_response(
     data: dict[str, Any],
     status: int = 200,
     headers: dict[str, str] | None = None,
-) -> httpx.Response:
+) -> httpx2.Response:
     h = {"replay-nonce": _next_nonce(), "content-type": "application/json"}
     if headers:
         h.update(headers)
-    return httpx.Response(status, json=data, headers=h)
+    return httpx2.Response(status, json=data, headers=h)
 
 
 def _problem_response(
     error_type: str,
     detail: str = "",
     status: int = 400,
-) -> httpx.Response:
+) -> httpx2.Response:
     body = {
         "type": f"urn:ietf:params:acme:error:{error_type}",
         "detail": detail,
         "status": status,
     }
-    return httpx.Response(
+    return httpx2.Response(
         status,
         json=body,
         headers={
@@ -91,9 +91,9 @@ def account_key() -> EllipticCurvePrivateKey:
 
 def _make_client(
     account_key: EllipticCurvePrivateKey,
-    transport: httpx.MockTransport,
+    transport: httpx2.MockTransport,
 ) -> Client:
-    http = httpx.AsyncClient(transport=transport)
+    http = httpx2.AsyncClient(transport=transport)
     return Client(
         directory_url="https://acme.test/directory",
         account_key=account_key,
@@ -101,6 +101,36 @@ def _make_client(
         poll_interval=0.01,
         poll_timeout=1.0,
     )
+
+
+# ---------------------------------------------------------------------------
+# HTTP client boundary and lifecycle
+# ---------------------------------------------------------------------------
+
+
+class TestHTTPClientBoundary:
+    def test_rejects_non_httpx2_client(self) -> None:
+        with pytest.raises(TypeError, match="http_client must be an httpx2.AsyncClient"):
+            Client(http_client=object())  # type: ignore[arg-type]
+
+    @pytest.mark.anyio
+    async def test_injected_client_remains_caller_owned(self) -> None:
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(lambda r: httpx2.Response(200)))
+        client = Client(http_client=http)
+
+        await client.close()
+
+        assert http.is_closed is False
+        await http.aclose()
+
+    @pytest.mark.anyio
+    async def test_owned_client_is_closed(self) -> None:
+        client = Client()
+        http = client._http
+
+        await client.close()
+
+        assert http.is_closed is True
 
 
 # ---------------------------------------------------------------------------
@@ -113,12 +143,12 @@ class TestDirectory:
     async def test_directory_fetch_and_cache(self, account_key: EllipticCurvePrivateKey) -> None:
         call_count = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal call_count
             call_count += 1
             return _json_response(DIRECTORY_DATA)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             d = await client.directory()
             assert d.new_nonce == "https://acme.test/new-nonce"
@@ -138,7 +168,7 @@ class TestNonceManagement:
     async def test_nonce_harvested_from_directory(
         self, account_key: EllipticCurvePrivateKey
     ) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -147,9 +177,9 @@ class TestNonceManagement:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             # Directory fetch harvests a nonce, so newAccount doesn't need HEAD
             acct = await client.create_account()
@@ -166,12 +196,12 @@ class TestBadNonceRetry:
     async def test_retries_once_on_bad_nonce(self, account_key: EllipticCurvePrivateKey) -> None:
         attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-nonce":
-                return httpx.Response(200, headers={"replay-nonce": _next_nonce()})
+                return httpx2.Response(200, headers={"replay-nonce": _next_nonce()})
             if request.url.path == "/new-account":
                 attempt += 1
                 if attempt == 1:
@@ -181,9 +211,9 @@ class TestBadNonceRetry:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             acct = await client.create_account()
             assert acct.status == "valid"
@@ -191,16 +221,16 @@ class TestBadNonceRetry:
 
     @pytest.mark.anyio
     async def test_raises_after_max_retries(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-nonce":
-                return httpx.Response(200, headers={"replay-nonce": _next_nonce()})
+                return httpx2.Response(200, headers={"replay-nonce": _next_nonce()})
             if request.url.path == "/new-account":
                 return _problem_response("badNonce", "always bad")
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             with pytest.raises(BadNonceError):
                 await client.create_account()
@@ -214,7 +244,7 @@ class TestBadNonceRetry:
 class TestAccount:
     @pytest.mark.anyio
     async def test_create_account(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -229,9 +259,9 @@ class TestAccount:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             acct = await client.create_account(contact=["mailto:a@b.com"])
             assert acct.status == AccountStatus.VALID
@@ -239,7 +269,7 @@ class TestAccount:
 
     @pytest.mark.anyio
     async def test_find_existing_account(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -250,16 +280,16 @@ class TestAccount:
                     status=200,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             acct = await client.create_account(only_return_existing=True)
             assert acct.url == "https://acme.test/acct/1"
 
     @pytest.mark.anyio
     async def test_deactivate_account(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -272,9 +302,9 @@ class TestAccount:
                 body = json.loads(b64url_decode(json.loads(request.content)["payload"]))
                 assert body["status"] == "deactivated"
                 return _json_response({"status": "deactivated"})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             acct = await client.deactivate_account()
@@ -284,7 +314,7 @@ class TestAccount:
     async def test_deactivate_without_account_raises(
         self, account_key: EllipticCurvePrivateKey
     ) -> None:
-        client = _make_client(account_key, httpx.MockTransport(lambda r: httpx.Response(404)))
+        client = _make_client(account_key, httpx2.MockTransport(lambda r: httpx2.Response(404)))
         async with client:
             with pytest.raises(RuntimeError, match="No account URL"):
                 await client.deactivate_account()
@@ -318,7 +348,7 @@ AUTHZ_DATA: dict[str, Any] = {
 class TestOrderLifecycle:
     @pytest.mark.anyio
     async def test_create_order(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -333,9 +363,9 @@ class TestOrderLifecycle:
                 return _json_response(
                     ORDER_DATA, status=201, headers={"location": "https://acme.test/order/1"}
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             order = await client.create_order("example.com")
@@ -344,7 +374,7 @@ class TestOrderLifecycle:
 
     @pytest.mark.anyio
     async def test_get_authorizations(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -359,9 +389,9 @@ class TestOrderLifecycle:
                 )
             if request.url.path == "/authz/1":
                 return _json_response(AUTHZ_DATA)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             order = await client.create_order("example.com")
@@ -374,7 +404,7 @@ class TestOrderLifecycle:
 
     @pytest.mark.anyio
     async def test_respond_to_challenge(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -395,9 +425,9 @@ class TestOrderLifecycle:
                         "token": "test-token",
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             from lacme.models import Challenge
@@ -415,7 +445,7 @@ class TestOrderLifecycle:
 
     @pytest.mark.anyio
     async def test_finalize_order(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -433,9 +463,9 @@ class TestOrderLifecycle:
                         "identifiers": [{"type": "dns", "value": "example.com"}],
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             from lacme.models import Order
@@ -456,7 +486,7 @@ class TestPolling:
     async def test_poll_authorization_valid(self, account_key: EllipticCurvePrivateKey) -> None:
         attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
@@ -476,9 +506,9 @@ class TestPolling:
                         "challenges": [],
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             authz = await client.poll_authorization("https://acme.test/authz/1")
@@ -489,7 +519,7 @@ class TestPolling:
     async def test_poll_authorization_invalid_raises(
         self, account_key: EllipticCurvePrivateKey
     ) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -506,9 +536,9 @@ class TestPolling:
                         "challenges": [],
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             with pytest.raises(ACMEValidationError):
@@ -516,7 +546,7 @@ class TestPolling:
 
     @pytest.mark.anyio
     async def test_poll_authorization_timeout(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -533,9 +563,9 @@ class TestPolling:
                         "challenges": [],
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         client._poll_timeout = 0.05
         async with client:
             await client.create_account()
@@ -546,7 +576,7 @@ class TestPolling:
     async def test_poll_order_valid(self, account_key: EllipticCurvePrivateKey) -> None:
         attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
@@ -566,9 +596,9 @@ class TestPolling:
                 if status == "valid":
                     data["certificate"] = "https://acme.test/cert/1"
                 return _json_response(data)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             order = await client.poll_order("https://acme.test/order/1")
@@ -584,11 +614,11 @@ class TestPolling:
 class TestErrorHandling:
     @pytest.mark.anyio
     async def test_rate_limited_error(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
-                return httpx.Response(
+                return httpx2.Response(
                     429,
                     json={
                         "type": "urn:ietf:params:acme:error:rateLimited",
@@ -601,9 +631,9 @@ class TestErrorHandling:
                         "retry-after": "60",
                     },
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             with pytest.raises(RateLimitedError) as exc_info:
                 await client.create_account()
@@ -611,14 +641,14 @@ class TestErrorHandling:
 
     @pytest.mark.anyio
     async def test_malformed_error(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
                 return _problem_response("malformed", "bad payload")
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             with pytest.raises(MalformedError):
                 await client.create_account()
@@ -636,7 +666,7 @@ class TestWildcard:
         handler_mock.provision = AsyncMock()
         handler_mock.deprovision = AsyncMock()
 
-        def transport_handler(request: httpx.Request) -> httpx.Response:
+        def transport_handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -645,9 +675,9 @@ class TestWildcard:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        http = httpx.AsyncClient(transport=httpx.MockTransport(transport_handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(transport_handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -705,7 +735,7 @@ class TestIssueFlow:
         authz_attempt = 0
         order_attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal authz_attempt, order_attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
@@ -774,7 +804,7 @@ class TestIssueFlow:
                     }
                 )
             if request.url.path == "/cert/1":
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     text=cert_pem,
                     headers={
@@ -782,14 +812,14 @@ class TestIssueFlow:
                         "content-type": "application/pem-certificate-chain",
                     },
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
         challenge_handler = AsyncMock()
         challenge_handler.provision = AsyncMock()
         challenge_handler.deprovision = AsyncMock()
 
         store = MemoryStore()
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -829,7 +859,7 @@ class TestDeprovisionOnFailure:
         """Verify challenge deprovision happens even when polling fails."""
         authz_attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal authz_attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
@@ -866,13 +896,13 @@ class TestDeprovisionOnFailure:
                         "token": "test-token",
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
         challenge_handler = AsyncMock()
         challenge_handler.provision = AsyncMock()
         challenge_handler.deprovision = AsyncMock()
 
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -896,7 +926,7 @@ class TestRetryAfterParsing:
     ) -> None:
         attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
@@ -909,7 +939,7 @@ class TestRetryAfterParsing:
             if request.url.path == "/authz/1":
                 attempt += 1
                 status = "valid" if attempt >= 2 else "pending"
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     json={
                         "identifier": {"type": "dns", "value": "example.com"},
@@ -922,9 +952,9 @@ class TestRetryAfterParsing:
                         "retry-after": "1",
                     },
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             authz = await client.poll_authorization("https://acme.test/authz/1")
@@ -935,7 +965,7 @@ class TestRetryAfterParsing:
 class TestPollOrderEdgeCases:
     @pytest.mark.anyio
     async def test_poll_order_timeout(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -951,9 +981,9 @@ class TestPollOrderEdgeCases:
                         "identifiers": [{"type": "dns", "value": "example.com"}],
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         client._poll_timeout = 0.05
         async with client:
             await client.create_account()
@@ -962,7 +992,7 @@ class TestPollOrderEdgeCases:
 
     @pytest.mark.anyio
     async def test_poll_order_invalid_raises(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -982,9 +1012,9 @@ class TestPollOrderEdgeCases:
                         },
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             with pytest.raises(ACMEValidationError, match="invalid"):
@@ -998,14 +1028,14 @@ class TestCreateAccountRestore:
     ) -> None:
         """If create_account fails, _account_url should be restored."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
                 return _problem_response("malformed", "bad request")
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         # Manually set an account URL to simulate pre-existing state
         client._account_url = "https://acme.test/acct/old"
         async with client:
@@ -1018,7 +1048,7 @@ class TestCreateAccountRestore:
 class TestIssueNoHandler:
     @pytest.mark.anyio
     async def test_issue_without_handler_raises(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1027,9 +1057,9 @@ class TestIssueNoHandler:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -1048,7 +1078,7 @@ class TestContactFallback:
         """create_account() without explicit contact should use constructor contact."""
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1060,9 +1090,9 @@ class TestContactFallback:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -1088,7 +1118,7 @@ class TestPollAuthzTerminalStates:
         account_key: EllipticCurvePrivateKey,
         terminal_status: str,
     ) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1105,9 +1135,9 @@ class TestPollAuthzTerminalStates:
                         "challenges": [],
                     }
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             with pytest.raises(ACMEValidationError, match="terminal state"):
@@ -1121,10 +1151,24 @@ class TestPollAuthzTerminalStates:
 
 class TestUnexpectedStatus:
     @pytest.mark.anyio
+    async def test_non_problem_error_raises_httpx2_status_error(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            return httpx2.Response(503, text="temporarily unavailable")
+
+        client = _make_client(account_key, httpx2.MockTransport(handler))
+        async with client:
+            with pytest.raises(httpx2.HTTPStatusError) as exc:
+                await client.directory()
+
+        assert exc.value.response.status_code == 503
+
+    @pytest.mark.anyio
     async def test_unexpected_2xx_raises(self, account_key: EllipticCurvePrivateKey) -> None:
         """If expected_status={201} but server returns 200, should raise."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-order":
@@ -1134,13 +1178,13 @@ class TestUnexpectedStatus:
                     status=200,
                     headers={"location": "https://acme.test/order/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         # Manually set account_url so we skip create_account
         client._account_url = "https://acme.test/acct/1"
         async with client:
-            with pytest.raises(httpx.HTTPStatusError, match="Unexpected status 200"):
+            with pytest.raises(httpx2.HTTPStatusError, match="Unexpected status 200"):
                 await client.create_order("example.com")
 
 
@@ -1157,7 +1201,7 @@ DIRECTORY_WITH_AUTHZ = {
 class TestPreAuthorization:
     @pytest.mark.anyio
     async def test_create_authorization(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_WITH_AUTHZ)
             if request.url.path == "/new-account":
@@ -1174,9 +1218,9 @@ class TestPreAuthorization:
                     status=201,
                     headers={"location": "https://acme.test/authz/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             authz = await client.create_authorization("example.com")
@@ -1187,7 +1231,7 @@ class TestPreAuthorization:
     async def test_create_authorization_no_new_authz_raises(
         self, account_key: EllipticCurvePrivateKey
     ) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)  # no newAuthz
             if request.url.path == "/new-account":
@@ -1196,9 +1240,9 @@ class TestPreAuthorization:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             with pytest.raises(RuntimeError, match="does not support pre-authorization"):
@@ -1251,7 +1295,7 @@ class TestRevocation:
         cert_pem, _cert_key = _make_test_cert_pem()
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1265,9 +1309,9 @@ class TestRevocation:
                     json.loads(b64url_decode(json.loads(request.content)["payload"]))
                 )
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             await client.revoke(cert_pem)
@@ -1284,7 +1328,7 @@ class TestRevocation:
         cert_pem, _cert_key = _make_test_cert_pem()
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1298,9 +1342,9 @@ class TestRevocation:
                     json.loads(b64url_decode(json.loads(request.content)["payload"]))
                 )
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             await client.revoke(cert_pem, reason=1)
@@ -1311,7 +1355,7 @@ class TestRevocation:
     async def test_revoke_invalid_reason(self, account_key: EllipticCurvePrivateKey) -> None:
         cert_pem, _cert_key = _make_test_cert_pem()
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1320,9 +1364,9 @@ class TestRevocation:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             with pytest.raises(ValueError, match="Invalid revocation reason 99"):
@@ -1332,7 +1376,7 @@ class TestRevocation:
     async def test_revoke_already_revoked(self, account_key: EllipticCurvePrivateKey) -> None:
         cert_pem, _cert_key = _make_test_cert_pem()
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1343,9 +1387,9 @@ class TestRevocation:
                 )
             if request.url.path == "/revoke-cert":
                 return _problem_response("alreadyRevoked", "Certificate already revoked")
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             with pytest.raises(AlreadyRevokedError):
@@ -1357,19 +1401,19 @@ class TestRevocation:
         cert_pem, cert_key = _make_test_cert_pem()
         captured_header: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-nonce":
-                return httpx.Response(200, headers={"replay-nonce": _next_nonce()})
+                return httpx2.Response(200, headers={"replay-nonce": _next_nonce()})
             if request.url.path == "/revoke-cert":
                 jws = json.loads(request.content)
                 captured_header.update(json.loads(b64url_decode(jws["protected"])))
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
         # No create_account needed for cert-key revocation
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.revoke_with_cert_key(cert_pem, cert_key)
 
@@ -1382,7 +1426,7 @@ class TestRevocation:
         cert_pem_str = cert_pem_bytes.decode("ascii")
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1396,9 +1440,9 @@ class TestRevocation:
                     json.loads(b64url_decode(json.loads(request.content)["payload"]))
                 )
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             await client.revoke(cert_pem_str)
@@ -1424,7 +1468,7 @@ class TestKeyRollover:
         captured_outer_header: dict[str, Any] = {}
         captured_inner_jws: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1440,9 +1484,9 @@ class TestKeyRollover:
                 inner_jws = json.loads(b64url_decode(outer_jws["payload"]))
                 captured_inner_jws.update(inner_jws)
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             await client.rollover_key(new_key)
@@ -1466,7 +1510,7 @@ class TestKeyRollover:
     async def test_rollover_generates_key(self, account_key: EllipticCurvePrivateKey) -> None:
         """Call rollover_key with no args — verify key changed."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1477,9 +1521,9 @@ class TestKeyRollover:
                 )
             if request.url.path == "/key-change":
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             original_key = client._account_key
@@ -1491,7 +1535,7 @@ class TestKeyRollover:
     async def test_rollover_saves_to_store(self, account_key: EllipticCurvePrivateKey) -> None:
         store = MemoryStore()
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1502,9 +1546,9 @@ class TestKeyRollover:
                 )
             if request.url.path == "/key-change":
                 return _json_response({})
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -1525,7 +1569,7 @@ class TestKeyRollover:
     async def test_rollover_failure_preserves_key(
         self, account_key: EllipticCurvePrivateKey
     ) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1536,9 +1580,9 @@ class TestKeyRollover:
                 )
             if request.url.path == "/key-change":
                 return _problem_response("serverInternal", "key change failed", status=500)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
             original_key = client._account_key
@@ -1549,7 +1593,7 @@ class TestKeyRollover:
 
     @pytest.mark.anyio
     async def test_rollover_no_account_raises(self, account_key: EllipticCurvePrivateKey) -> None:
-        client = _make_client(account_key, httpx.MockTransport(lambda r: httpx.Response(404)))
+        client = _make_client(account_key, httpx2.MockTransport(lambda r: httpx2.Response(404)))
         async with client:
             with pytest.raises(RuntimeError, match="No account URL"):
                 await client.rollover_key()
@@ -1565,7 +1609,7 @@ class TestExternalAccountBinding:
     async def test_create_account_with_eab(self, account_key: EllipticCurvePrivateKey) -> None:
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1577,9 +1621,9 @@ class TestExternalAccountBinding:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account(
                 eab_kid="kid-12345",
@@ -1598,7 +1642,7 @@ class TestExternalAccountBinding:
         """EAB params from Client constructor should be used by create_account()."""
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1610,9 +1654,9 @@ class TestExternalAccountBinding:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
         client = Client(
             directory_url="https://acme.test/directory",
             account_key=account_key,
@@ -1631,12 +1675,12 @@ class TestExternalAccountBinding:
 
     @pytest.mark.anyio
     async def test_eab_kid_without_key_raises(self, account_key: EllipticCurvePrivateKey) -> None:
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             with pytest.raises(ValueError, match="Both eab_kid and eab_hmac_key must be provided"):
                 await client.create_account(eab_kid="orphan-kid")
@@ -1645,7 +1689,7 @@ class TestExternalAccountBinding:
     async def test_no_eab_no_binding(self, account_key: EllipticCurvePrivateKey) -> None:
         captured_payload: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -1657,9 +1701,9 @@ class TestExternalAccountBinding:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_client(account_key, httpx.MockTransport(handler))
+        client = _make_client(account_key, httpx2.MockTransport(handler))
         async with client:
             await client.create_account()
 

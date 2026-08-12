@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
+import json
 import warnings
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
+import httpx2
 import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec as ec_mod
@@ -26,6 +30,8 @@ from lacme.models import AccountStatus, Directory
 from lacme.sync import SyncChallengeHandler, SyncClient, _SyncToAsyncAdapter
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 
 
@@ -51,6 +57,37 @@ ORDER_DATA: dict[str, Any] = {
 }
 
 
+@pytest.fixture
+def directory_server_url() -> Iterator[str]:
+    """Serve an HTTP/1.1 directory over a real keep-alive connection."""
+
+    class DirectoryHandler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def do_GET(self) -> None:  # noqa: N802
+            body = json.dumps(DIRECTORY_DATA).encode()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(body)))
+            self.send_header("replay-nonce", "real-server-nonce")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, _format: str, *args: Any) -> None:
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), DirectoryHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = server.server_address
+        yield f"http://{host}:{port}/directory"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5.0)
+
+
 def _next_nonce() -> str:
     global _NONCE_COUNTER  # noqa: PLW0603
     _NONCE_COUNTER += 1
@@ -61,19 +98,19 @@ def _json_response(
     data: dict[str, Any],
     status: int = 200,
     headers: dict[str, str] | None = None,
-) -> httpx.Response:
+) -> httpx2.Response:
     h = {"replay-nonce": _next_nonce(), "content-type": "application/json"}
     if headers:
         h.update(headers)
-    return httpx.Response(status, json=data, headers=h)
+    return httpx2.Response(status, json=data, headers=h)
 
 
 def _make_sync_client(
     account_key: EllipticCurvePrivateKey,
-    transport: httpx.MockTransport,
+    transport: httpx2.MockTransport,
     **kwargs: Any,
 ) -> SyncClient:
-    http = httpx.AsyncClient(transport=transport)
+    http = httpx2.AsyncClient(transport=transport)
     return SyncClient(
         directory_url="https://acme.test/directory",
         account_key=account_key,
@@ -112,12 +149,12 @@ class TestContextManager:
     def test_context_manager(self, account_key: EllipticCurvePrivateKey) -> None:
         """SyncClient works as a context manager."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        with _make_sync_client(account_key, httpx.MockTransport(handler)) as client:
+        with _make_sync_client(account_key, httpx2.MockTransport(handler)) as client:
             d = client.directory()
             assert d.new_nonce == "https://acme.test/new-nonce"
 
@@ -129,7 +166,7 @@ class TestIssue:
         authz_attempt = 0
         order_attempt = 0
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             nonlocal authz_attempt, order_attempt
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
@@ -197,7 +234,7 @@ class TestIssue:
                     }
                 )
             if request.url.path == "/cert/1":
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     text=cert_pem,
                     headers={
@@ -205,13 +242,13 @@ class TestIssue:
                         "content-type": "application/pem-certificate-chain",
                     },
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
         sync_handler = MagicMock(spec=SyncChallengeHandler)
 
         with _make_sync_client(
             account_key,
-            httpx.MockTransport(handler),
+            httpx2.MockTransport(handler),
             challenge_handler=sync_handler,
         ) as client:
             bundle = client.issue("example.com")
@@ -229,12 +266,12 @@ class TestDirectory:
     def test_directory(self, account_key: EllipticCurvePrivateKey) -> None:
         """directory() returns a Directory object synchronously."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        with _make_sync_client(account_key, httpx.MockTransport(handler)) as client:
+        with _make_sync_client(account_key, httpx2.MockTransport(handler)) as client:
             d = client.directory()
             assert isinstance(d, Directory)
             assert d.new_account == "https://acme.test/new-account"
@@ -245,7 +282,7 @@ class TestCreateAccount:
     def test_create_account(self, account_key: EllipticCurvePrivateKey) -> None:
         """create_account() works synchronously."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
             if request.url.path == "/new-account":
@@ -254,9 +291,9 @@ class TestCreateAccount:
                     status=201,
                     headers={"location": "https://acme.test/acct/1"},
                 )
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        with _make_sync_client(account_key, httpx.MockTransport(handler)) as client:
+        with _make_sync_client(account_key, httpx2.MockTransport(handler)) as client:
             acct = client.create_account()
             assert acct.status == AccountStatus.VALID
             assert acct.url == "https://acme.test/acct/1"
@@ -274,7 +311,6 @@ class TestSyncChallengeHandlerAdapted:
         adapter = _SyncToAsyncAdapter(sync_handler)
 
         # Verify the adapter's async methods call through to sync methods
-        import asyncio
 
         asyncio.run(adapter.provision("example.com", "tok", "ka"))
         sync_handler.provision.assert_called_once_with("example.com", "tok", "ka")
@@ -288,14 +324,14 @@ class TestSyncChallengeHandlerAdapted:
         async_handler.provision = AsyncMock()
         async_handler.deprovision = AsyncMock()
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             return _json_response(DIRECTORY_DATA)
 
         # When an async handler is provided, SyncClient should pass it through
         # directly to Client (no _SyncToAsyncAdapter wrapping).
         client = _make_sync_client(
             account_key,
-            httpx.MockTransport(handler),
+            httpx2.MockTransport(handler),
             challenge_handler=async_handler,
         )
         # The underlying Client should have the original async handler, not an adapter
@@ -307,12 +343,12 @@ class TestCloseWithoutContextManager:
     def test_close_without_context_manager(self, account_key: EllipticCurvePrivateKey) -> None:
         """close() can be called directly without using a context manager."""
 
-        def handler(request: httpx.Request) -> httpx.Response:
+        def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
                 return _json_response(DIRECTORY_DATA)
-            return httpx.Response(404)
+            return httpx2.Response(404)
 
-        client = _make_sync_client(account_key, httpx.MockTransport(handler))
+        client = _make_sync_client(account_key, httpx2.MockTransport(handler))
         d = client.directory()
         assert d.new_nonce == "https://acme.test/new-nonce"
         client.close()
@@ -326,3 +362,59 @@ class TestCloseWithoutContextManager:
         ):
             warnings.simplefilter("ignore", RuntimeWarning)
             client.directory()
+
+    def test_injected_http_client_is_closed_on_runner_loop(
+        self,
+        account_key: EllipticCurvePrivateKey,
+        directory_server_url: str,
+    ) -> None:
+        http = httpx2.AsyncClient(trust_env=False)
+        client = SyncClient(
+            directory_url=directory_server_url,
+            account_key=account_key,
+            http_client=http,
+            allow_insecure=True,
+        )
+
+        assert client.directory().new_nonce == DIRECTORY_DATA["newNonce"]
+        client.close()
+
+        assert http.is_closed is True
+
+    def test_injected_http_client_is_closed_on_background_loop(
+        self,
+        account_key: EllipticCurvePrivateKey,
+        directory_server_url: str,
+    ) -> None:
+        async def exercise_sync_client() -> None:
+            http = httpx2.AsyncClient(trust_env=False)
+            client = SyncClient(
+                directory_url=directory_server_url,
+                account_key=account_key,
+                http_client=http,
+                allow_insecure=True,
+            )
+
+            assert client._runner._thread is not None
+            assert client.directory().new_nonce == DIRECTORY_DATA["newNonce"]
+            client.close()
+
+            assert http.is_closed is True
+
+        asyncio.run(exercise_sync_client())
+
+    def test_owned_http_client_is_closed(self, account_key: EllipticCurvePrivateKey) -> None:
+        client = SyncClient(account_key=account_key)
+        http = client._client._http
+
+        client.close()
+
+        assert http.is_closed is True
+
+    def test_close_is_idempotent(self, account_key: EllipticCurvePrivateKey) -> None:
+        with SyncClient(account_key=account_key) as client:
+            client.close()
+
+    def test_rejects_non_httpx2_client(self, account_key: EllipticCurvePrivateKey) -> None:
+        with pytest.raises(TypeError, match="http_client must be an httpx2.AsyncClient"):
+            SyncClient(account_key=account_key, http_client=object())  # type: ignore[arg-type]

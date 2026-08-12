@@ -1,6 +1,6 @@
 """Cloudflare DNS provider for DNS-01 challenges.
 
-Uses the Cloudflare REST API v4 via :mod:`httpx` to create and delete
+Uses the Cloudflare REST API v4 via :mod:`httpx2` to create and delete
 TXT records in a specified zone.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import httpx
+import httpx2
 
 logger = logging.getLogger("lacme.challenges.providers.cloudflare")
 
@@ -20,18 +20,18 @@ class CloudflareDNSProvider:
     """DNS provider backed by the Cloudflare API.
 
     Satisfies :class:`~lacme.challenges.dns01.DNSProvider`.
-    Reuses a single :class:`httpx.AsyncClient` for connection pooling.
+    Reuses a single :class:`httpx2.AsyncClient` for connection pooling.
     """
 
     def __init__(self, *, api_token: str, zone_id: str) -> None:
         self._api_token = api_token
         self._zone_id = zone_id
         self._record_ids: dict[tuple[str, str], str] = {}
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx2.AsyncClient | None = None
 
-    def _get_client(self) -> httpx.AsyncClient:
+    def _get_client(self) -> httpx2.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(
+            self._client = httpx2.AsyncClient(
                 headers={"Authorization": f"Bearer {self._api_token}"},
             )
         return self._client
@@ -77,7 +77,7 @@ class CloudflareDNSProvider:
         logger.debug("Deleted Cloudflare TXT record %s for %s", record_id, domain)
 
 
-def _check_cf_response(resp: httpx.Response) -> None:
+def _check_cf_response(resp: httpx2.Response) -> None:
     """Check a Cloudflare API response, sanitizing errors to avoid token leaks."""
     if resp.is_success:
         return

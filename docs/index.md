@@ -5,7 +5,7 @@ lacme is a modern, async-native Python library for automating TLS certificate ma
 ## Features
 
 **Async-native with sync wrapper.**
-The core `Client` is fully async, built on httpx. For blocking code or scripts, `SyncClient` wraps every method with a managed event loop so you can call `client.issue()` without touching asyncio.
+The core `Client` is fully async, built on HTTPX2. For blocking code or scripts, `SyncClient` wraps every method with a managed event loop so you can call `client.issue()` without touching asyncio.
 
 **HTTP-01 and DNS-01 challenges.**
 `HTTP01Handler` serves challenge responses over a built-in TCP server or via ASGI middleware. `DNS01Handler` delegates record creation to pluggable providers -- Cloudflare, Route 53, and shell-hook providers are included out of the box.
@@ -32,7 +32,7 @@ The `lacme` command provides `issue`, `renew`, `revoke`, and `account` subcomman
 `EventDispatcher` emits typed events for certificate issued, renewed, expiring, challenge failed, and rate limit warnings. `MetricsCollector` subscribes to the dispatcher and updates Prometheus counters and gauges automatically.
 
 **MockACMEServer for testing.**
-An in-process mock ACME server backed by `httpx.MockTransport`. Implements the full issue flow so you can integration-test your certificate automation without network access or a real CA.
+An in-process mock ACME server backed by `httpx2.MockTransport`. Implements the full issue flow so you can integration-test your certificate automation without network access or a real CA.
 
 ## Installation
 
