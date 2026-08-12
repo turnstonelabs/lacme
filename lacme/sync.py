@@ -259,12 +259,17 @@ class SyncClient:
         if not self._runner.is_open:
             return
         try:
-            if self._injected_http_client is not None:
-                self._runner.run(self._injected_http_client.aclose())
-            else:
-                self._runner.run(self._client.close())
+            self._runner.run(self._close_client())
         finally:
             self._runner.close()
+
+    async def _close_client(self) -> None:
+        """Run all client cleanup before the managed event loop shuts down."""
+        try:
+            await self._client.close()
+        finally:
+            if self._injected_http_client is not None:
+                await self._injected_http_client.aclose()
 
     # --- Directory ---
 

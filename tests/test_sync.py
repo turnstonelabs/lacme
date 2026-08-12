@@ -9,7 +9,7 @@ import warnings
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx2
 import pytest
@@ -377,8 +377,10 @@ class TestCloseWithoutContextManager:
         )
 
         assert client.directory().new_nonce == DIRECTORY_DATA["newNonce"]
-        client.close()
+        with patch.object(client._client, "close", wraps=client._client.close) as client_close:
+            client.close()
 
+        client_close.assert_awaited_once_with()
         assert http.is_closed is True
 
     def test_injected_http_client_is_closed_on_background_loop(
