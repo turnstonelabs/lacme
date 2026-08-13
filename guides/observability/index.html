@@ -2222,12 +2222,12 @@ issuance.</p>
 <tr>
 <td><code>domain</code></td>
 <td><code>str</code></td>
-<td>Primary domain name</td>
+<td>Primary identifier string</td>
 </tr>
 <tr>
 <td><code>domains</code></td>
 <td><code>tuple[str, ...]</code></td>
-<td>All domains in the cert</td>
+<td>All identifier strings</td>
 </tr>
 <tr>
 <td><code>expires_at</code></td>
@@ -2258,12 +2258,12 @@ issuance.</p>
 <tr>
 <td><code>domain</code></td>
 <td><code>str</code></td>
-<td>Primary domain name</td>
+<td>Primary identifier string</td>
 </tr>
 <tr>
 <td><code>domains</code></td>
 <td><code>tuple[str, ...]</code></td>
-<td>All domains in the cert</td>
+<td>All identifier strings</td>
 </tr>
 <tr>
 <td><code>expires_at</code></td>
@@ -2300,12 +2300,12 @@ threshold. This event fires before the renewal attempt.</p>
 <tr>
 <td><code>domain</code></td>
 <td><code>str</code></td>
-<td>Primary domain name</td>
+<td>Primary identifier string</td>
 </tr>
 <tr>
 <td><code>domains</code></td>
 <td><code>tuple[str, ...]</code></td>
-<td>All domains in the cert</td>
+<td>All identifier strings</td>
 </tr>
 <tr>
 <td><code>expires_at</code></td>
@@ -2341,7 +2341,7 @@ threshold. This event fires before the renewal attempt.</p>
 <tr>
 <td><code>domain</code></td>
 <td><code>str</code></td>
-<td>Domain that failed validation</td>
+<td>Identifier string that failed validation</td>
 </tr>
 <tr>
 <td><code>challenge_type</code></td>
@@ -2454,12 +2454,12 @@ via <code>ca.init()</code>.</p>
 <tr>
 <td><code>name</code></td>
 <td><code>str</code></td>
-<td>Primary name (CN)</td>
+<td>Primary identifier string (CN)</td>
 </tr>
 <tr>
 <td><code>names</code></td>
 <td><code>tuple[str, ...]</code></td>
-<td>All names (SANs)</td>
+<td>All identifier strings (SANs)</td>
 </tr>
 <tr>
 <td><code>is_client</code></td>

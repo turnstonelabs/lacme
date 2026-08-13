@@ -1758,7 +1758,7 @@ new self-signed root.</p>
 
 
 <a href="#lacme.ca.CertificateAuthority.issue" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">names</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="n">IPv4Address</span> <span class="o">|</span> <span class="n">IPv6Address</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">validity_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">validity_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">names</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">validity_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">validity_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -1782,7 +1782,17 @@ new self-signed root.</p>
                 <code>names</code>
             </td>
             <td>
-                  <code><span title="str">str</span> | <span title="list">list</span>[<span title="str">str</span> | <span title="ipaddress.IPv4Address">IPv4Address</span> | <span title="ipaddress.IPv6Address">IPv6Address</span>]</code>
+                  <code><a class="autorefs autorefs-internal" title="IdentifierValue
+
+
+  
+      module-attribute
+   (lacme._types.IdentifierValue)" href="../_types/#lacme._types.IdentifierValue">IdentifierValue</a> | <span title="collections.abc.Sequence">Sequence</span>[<a class="autorefs autorefs-internal" title="IdentifierValue
+
+
+  
+      module-attribute
+   (lacme._types.IdentifierValue)" href="../_types/#lacme._types.IdentifierValue">IdentifierValue</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1909,14 +1919,17 @@ Default: server cert (serverAuth EKU).</p>
 
 
 <a href="#lacme.ca.CertificateAuthority.issue_from_csr" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue_from_csr</span><span class="p">(</span><span class="n">csr_der</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">validity_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">validity_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue_from_csr</span><span class="p">(</span><span class="n">csr_der</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">validated_identifiers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">validity_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">validity_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Sign an externally-provided CSR.</p>
-<p>Used by ACMEResponder's finalize endpoint.  Extracts SANs from
-the CSR.  The CSR's public key is used (no new key generated).</p>
+<p>Used by ACMEResponder's finalize endpoint. The CSR's public key is
+always used (no new key generated). By default SANs are authoritative
+with a common-name fallback. Internal ACME callers may supply
+<code>validated_identifiers</code> only after binding that exact set to the CSR
+and order; those values become the issued SANs.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>

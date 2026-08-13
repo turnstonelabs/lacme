@@ -1719,7 +1719,8 @@
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>lacme
 </code></pre></div>
-<p>This installs lacme and its two runtime dependencies: HTTPX2 and cryptography.</p>
+<p>This installs lacme and its three runtime dependencies: HTTPX2, cryptography,
+and idna.</p>
 <h2 id="your-first-certificate-private-ca">Your First Certificate (Private CA)<a class="headerlink" href="#your-first-certificate-private-ca" title="Permanent link">&para;</a></h2>
 <p>The fastest way to see lacme in action is with the built-in Certificate Authority. No domain name, no internet access, no port 80 required.</p>
 <h3 id="1-create-a-ca-and-issue-a-certificate">1. Create a CA and issue a certificate<a class="headerlink" href="#1-create-a-ca-and-issue-a-certificate" title="Permanent link">&para;</a></h3>
@@ -1825,7 +1826,12 @@
 <a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>            key.pem
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>            meta.json
 </code></pre></div>
-<p>Private keys are written with <code>0o600</code> permissions. All writes are atomic (write to temp file, fsync, then rename).</p>
+<p>Private keys are written with <code>0o600</code> permissions. All writes are atomic (write to temp file, fsync, then rename).
+Most ordinary DNS names keep the readable directory shown above. IPv6,
+wildcard, long, reserved-prefix, and other values that cannot safely use a
+portable filesystem component are stored under a deterministic
+<code>lacme-v2-&lt;sha256&gt;</code> directory; their original value remains in <code>meta.json</code> and
+is used by all <code>FileStore</code> APIs.</p>
 <h2 id="auto-renewal">Auto-Renewal<a class="headerlink" href="#auto-renewal" title="Permanent link">&para;</a></h2>
 <p><code>RenewalManager</code> scans your certificate store on a schedule and re-issues any certificate approaching expiry:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>

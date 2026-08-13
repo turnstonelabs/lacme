@@ -823,6 +823,34 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#lacme.challenges.ChallengeMap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ChallengeMap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ChallengeMap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lacme.challenges.ChallengeMap.items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        items
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1508,6 +1536,34 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#lacme.challenges.ChallengeMap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ChallengeMap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ChallengeMap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lacme.challenges.ChallengeMap.items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        items
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1550,7 +1606,8 @@
 
         <p>ACME challenge handlers.</p>
 <p>Defines the :class:<code>ChallengeHandler</code> protocol implemented by
-:class:<code>~lacme.challenges.http01.HTTP01Handler</code> and (future) DNS-01 handlers.</p>
+:class:<code>~lacme.challenges.http01.HTTP01Handler</code> and
+:class:<code>~lacme.challenges.dns01.DNS01Handler</code>.</p>
 
 
 
@@ -1653,6 +1710,74 @@
     <div class="doc doc-contents ">
 
         <p>Make the challenge response available for validation.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="lacme.challenges.ChallengeMap" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ChallengeMap</span>
+
+
+<a href="#lacme.challenges.ChallengeMap" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="typing.Protocol">Protocol</span></code></p>
+
+
+
+        <p>Read-only per-identifier async challenge-handler overrides.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="lacme.challenges.ChallengeMap.items" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">items</span>
+
+
+<a href="#lacme.challenges.ChallengeMap.items" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">items</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ChallengeHandler</span><span class="p">]]]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Iterate over identifier challenge overrides.</p>
 
 
     </div>

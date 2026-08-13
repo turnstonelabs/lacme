@@ -1848,12 +1848,12 @@ JWK/JWS construction, CSR generation, and key authorization computation.</p>
 
 
 <a href="#lacme.crypto.generate_csr" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">generate_csr</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">EllipticCurvePrivateKey</span><span class="p">,</span> <span class="n">domains</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="n">IPv4Address</span> <span class="o">|</span> <span class="n">IPv6Address</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">generate_csr</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">EllipticCurvePrivateKey</span><span class="p">,</span> <span class="n">domains</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Generate a DER-encoded CSR with <em>domains</em> as SANs.</p>
+        <p>Generate a DER-encoded CSR with <em>domains</em> represented as typed SANs.</p>
 <p>CN is set to the string representation of the first identifier.
 Strings are treated as DNS names; :class:<code>~ipaddress.IPv4Address</code> and
 :class:<code>~ipaddress.IPv6Address</code> objects become IP SANs.</p>

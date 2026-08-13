@@ -2049,13 +2049,14 @@ URLs on the server.</p>
 
 
 <a href="#lacme.client.Client.check_rate_limits" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">check_rate_limits</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">RateLimitStatus</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">check_rate_limits</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">RateLimitStatus</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Check if issuing for <em>domains</em> would exceed rate limits.</p>
-<p>Requires a <code>rate_limit_tracker</code> to be set on the client.</p>
+<p>Typed IP identifiers are excluded from registered-domain accounting.
+Requires a <code>rate_limit_tracker</code> to be set on the client.</p>
 
 
 <p><span class="doc-section-title">Raises:</span></p>
@@ -2244,12 +2245,15 @@ back to the values provided at <code>Client</code> construction time.</p>
   </span>
 
 <a href="#lacme.client.Client.create_order" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create_order</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">not_before</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">not_after</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Order</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">create_order</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">not_before</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">not_after</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Order</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Create a new certificate order.</p>
+        <p>Create a new certificate order for DNS names and/or typed IP addresses.</p>
+<p>Plain strings are DNS identifiers. Pass an
+:class:<code>ipaddress.IPv4Address</code> or :class:<code>ipaddress.IPv6Address</code> to
+request an RFC 8738 IP identifier.</p>
 
 
     </div>
@@ -2413,12 +2417,12 @@ back to the values provided at <code>Client</code> construction time.</p>
   </span>
 
 <a href="#lacme.client.Client.issue" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">challenge_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;http-01&#39;</span><span class="p">,</span> <span class="n">challenge_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ChallengeHandler</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">challenge_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;http-01&#39;</span><span class="p">,</span> <span class="n">challenge_map</span><span class="p">:</span> <span class="n">ChallengeMap</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Issue a certificate for the given domain(s).</p>
+        <p>Issue a certificate for DNS names and/or typed IP addresses.</p>
 <p>Orchestrates: account → order → authorize → finalize → download.</p>
 
 
@@ -2438,11 +2442,23 @@ back to the values provided at <code>Client</code> construction time.</p>
                 <code>domains</code>
             </td>
             <td>
-                  <code><span title="str">str</span> | <span title="list">list</span>[<span title="str">str</span>]</code>
+                  <code><a class="autorefs autorefs-internal" title="IdentifierValue
+
+
+  
+      module-attribute
+   (lacme._types.IdentifierValue)" href="../_types/#lacme._types.IdentifierValue">IdentifierValue</a> | <span title="collections.abc.Sequence">Sequence</span>[<a class="autorefs autorefs-internal" title="IdentifierValue
+
+
+  
+      module-attribute
+   (lacme._types.IdentifierValue)" href="../_types/#lacme._types.IdentifierValue">IdentifierValue</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Domain name(s) to include in the certificate.</p>
+                <p>DNS name(s) and/or typed IPv4/IPv6 address objects to
+include in the certificate. Plain strings are always treated
+as DNS identifiers.</p>
               </div>
             </td>
             <td>
@@ -2458,7 +2474,7 @@ back to the values provided at <code>Client</code> construction time.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Default challenge type for all domains.</p>
+                <p>Default challenge type for all identifiers.</p>
               </div>
             </td>
             <td>
@@ -2470,14 +2486,15 @@ back to the values provided at <code>Client</code> construction time.</p>
                 <code>challenge_map</code>
             </td>
             <td>
-                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="tuple">tuple</span>[<span title="str">str</span>, <a class="autorefs autorefs-internal" title="ChallengeHandler (lacme.challenges.ChallengeHandler)" href="../challenges/#lacme.challenges.ChallengeHandler">ChallengeHandler</a>]] | None</code>
+                  <code><a class="autorefs autorefs-internal" title="ChallengeMap (lacme.challenges.ChallengeMap)" href="../challenges/#lacme.challenges.ChallengeMap">ChallengeMap</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Per-domain overrides mapping
-<code>{domain: (challenge_type, handler)}</code>.  Domains not in
-the map fall back to <em>challenge_type</em> and the client's
-default <code>challenge_handler</code>.</p>
+                <p>Per-identifier overrides mapping
+<code>{identifier: (challenge_type, handler)}</code>. Use the same
+typed IP address object used in <em>domains</em> for an IP override.
+Identifiers not in the map fall back to <em>challenge_type</em> and
+the client's default <code>challenge_handler</code>.</p>
               </div>
             </td>
             <td>
