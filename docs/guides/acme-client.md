@@ -576,12 +576,18 @@ async with Client(
 
 ### HTTPS Enforcement
 
-By default, lacme requires the directory URL to use HTTPS:
+By default, lacme requires every ACME request URL to use HTTPS, including URLs
+discovered in the directory and later account, order, authorization, challenge,
+and certificate responses:
 
 ```python
 # This raises ValueError:
 client = Client(directory_url="http://localhost:8080/directory")
 ```
+
+Lacme does not follow redirects for ACME requests, even when an injected HTTP
+client enables them. Configure the directory and advertised resources with
+their final request URLs.
 
 For local development or trusted networks, set `allow_insecure=True`:
 
@@ -596,9 +602,10 @@ async with Client(
 ```
 
 !!! warning
-    Never use `allow_insecure=True` in production. ACME requests contain
-    cryptographic signatures, but an HTTP transport allows interception and
-    replay attacks.
+    `allow_insecure=True` permits HTTP for the entire ACME flow, including
+    server-discovered resource URLs. Never use it on an untrusted network.
+    ACME requests contain cryptographic signatures, but an HTTP transport
+    allows interception and replay attacks.
 
 ### Client Certificate Authentication
 

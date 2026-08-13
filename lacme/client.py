@@ -91,7 +91,8 @@ class Client:
     Injected HTTP clients must be :class:`httpx2.AsyncClient` instances. The
     caller retains ownership of an injected client; :meth:`close` only closes
     clients created by ``Client``. HTTP transport and status errors propagate
-    from HTTPX2.
+    from HTTPX2. ACME redirects are never followed; configure the final request
+    URLs on the server.
 
     Usage::
 
@@ -119,12 +120,8 @@ class Client:
         client_key: str | None = None,
         allow_insecure: bool = False,
     ) -> None:
-        if not allow_insecure and not directory_url.startswith("https://"):
-            msg = (
-                f"ACME directory URL must use HTTPS (got {directory_url!r}). "
-                "Pass allow_insecure=True to override for testing."
-            )
-            raise ValueError(msg)
+        self._allow_insecure = allow_insecure
+        self._validate_request_url(directory_url, label="ACME directory URL")
         self._directory_url = directory_url
         self._account_key = account_key
         self._store = store
@@ -196,7 +193,8 @@ class Client:
         """Fetch and cache the ACME directory."""
         if self._directory is not None:
             return self._directory
-        resp = await self._http.get(self._directory_url)
+        self._validate_request_url(self._directory_url, label="ACME directory URL")
+        resp = await self._http.get(self._directory_url, follow_redirects=False)
         resp.raise_for_status()
         self._harvest_nonce(resp)
         self._directory = Directory.from_dict(resp.json())
@@ -208,7 +206,8 @@ class Client:
         if self._nonces:
             return self._nonces.pop()
         d = await self.directory()
-        resp = await self._http.head(d.new_nonce)
+        self._validate_request_url(d.new_nonce)
+        resp = await self._http.head(d.new_nonce, follow_redirects=False)
         resp.raise_for_status()
         self._harvest_nonce(resp)
         if self._nonces:
@@ -234,6 +233,7 @@ class Client:
         expected_status: set[int] | None = None,
     ) -> httpx2.Response:
         """Low-level JWS-signed POST.  No badNonce retry."""
+        self._validate_request_url(url)
         if payload is None:
             raw_payload = b""
         elif isinstance(payload, dict):
@@ -256,10 +256,29 @@ class Client:
                 "content-type": "application/jose+json",
                 "accept": "application/pem-certificate-chain, application/json, application/problem+json",
             },
+            follow_redirects=False,
         )
         self._harvest_nonce(resp)
         self._check_response(resp, expected_status)
         return resp
+
+    def _validate_request_url(self, url: str, *, label: str = "ACME URL") -> None:
+        """Enforce the configured transport policy before an ACME request."""
+        try:
+            parsed = httpx2.URL(url)
+        except httpx2.InvalidURL as exc:
+            msg = f"{label} is invalid: {url!r}"
+            raise ValueError(msg) from exc
+
+        if not parsed.is_absolute_url or parsed.scheme not in {"http", "https"}:
+            msg = f"{label} must use HTTP or HTTPS (got {url!r})"
+            raise ValueError(msg)
+        if not self._allow_insecure and parsed.scheme != "https":
+            msg = (
+                f"{label} must use HTTPS (got {url!r}). "
+                "Pass allow_insecure=True to permit HTTP on a trusted network."
+            )
+            raise ValueError(msg)
 
     async def _signed_request(
         self,
