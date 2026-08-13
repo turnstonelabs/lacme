@@ -9,12 +9,15 @@ Mount in your web framework (Starlette, FastAPI, etc.) at a path prefix.
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import logging
+import re
 import secrets
 import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from urllib.parse import unquote_to_bytes, urlsplit
 
 from lacme.crypto import b64url_encode
 
@@ -23,6 +26,10 @@ if TYPE_CHECKING:
     from lacme.ca import CertificateAuthority
 
 logger = logging.getLogger("lacme.acme_server")
+
+_INVALID_PERCENT_ESCAPE_RE = re.compile(r"%(?![0-9A-Fa-f]{2})")
+_URI_PATH_RE = re.compile(r"(?:[A-Za-z0-9._~!$&'()*+,;=:@/-]|%[0-9A-Fa-f]{2})*\Z")
+_URI_REG_NAME_RE = re.compile(r"[A-Za-z0-9._~-]+\Z")
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +95,14 @@ class ACMEResponder:
     Delegates certificate signing to a :class:`~lacme.ca.CertificateAuthority`.
     Mount in your web framework at a path prefix.
 
+    When the responder is reached through NAT or a reverse proxy, pass the
+    canonical externally reachable responder URL via ``external_url``.  The URL
+    must include the mount prefix and is used for every URL advertised through
+    the ACME protocol.  Supply it as an ASCII HTTP(S) URI, using punycode for
+    internationalized hostnames and percent-encoded UTF-8 bytes for non-ASCII
+    paths; credentials, query strings, fragments, and ambiguous path segments
+    are not accepted.
+
     .. warning::
 
         This responder does **not** validate JWS signatures or nonces.
@@ -99,9 +114,13 @@ class ACMEResponder:
 
         ca = CertificateAuthority(store=store)
         ca.init()
-        responder = ACMEResponder(ca=ca, auto_approve=True)
+        responder = ACMEResponder(
+            ca=ca,
+            auto_approve=True,
+            external_url="https://ca.example/acme",
+        )
         # Mount at /acme in your ASGI app
-        # Clients use: directory_url="https://host/acme/directory"
+        # Clients use: directory_url="https://ca.example/acme/directory"
     """
 
     def __init__(
@@ -110,10 +129,14 @@ class ACMEResponder:
         *,
         challenge_validator: ChallengeValidator | None = None,
         auto_approve: bool = False,
+        external_url: str | None = None,
     ) -> None:
         self._ca = ca
         self._challenge_validator = challenge_validator
         self._auto_approve = auto_approve
+        self._external_url = (
+            self._normalize_external_url(external_url) if external_url is not None else None
+        )
 
         self._accounts: dict[str, _Account] = {}
         self._orders: dict[str, _Order] = {}
@@ -568,7 +591,10 @@ class ACMEResponder:
     # ------------------------------------------------------------------
 
     def _get_base_url(self, scope: Scope) -> str:
-        """Build the base URL from the ASGI scope."""
+        """Return the configured external URL or build one from the ASGI scope."""
+        if self._external_url is not None:
+            return self._external_url
+
         scheme = scope.get("scheme", "https")
         server = scope.get("server")
         if server:
@@ -585,6 +611,77 @@ class ACMEResponder:
             base = "https://localhost"
         root_path = scope.get("root_path", "")
         return f"{base}{root_path}"
+
+    @staticmethod
+    def _normalize_external_url(url: str) -> str:
+        """Validate and normalize a canonical externally reachable URL."""
+        if not url or not url.isascii():
+            msg = "external_url must be an ASCII HTTP(S) URI"
+            raise ValueError(msg)
+        if any(char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F for char in url):
+            msg = "external_url must be an absolute HTTP(S) URL without whitespace or controls"
+            raise ValueError(msg)
+        if "\\" in url:
+            msg = "external_url must not include backslashes"
+            raise ValueError(msg)
+
+        try:
+            parsed = urlsplit(url)
+            hostname = parsed.hostname
+            _ = parsed.port
+        except ValueError as exc:
+            msg = "external_url must be a valid absolute HTTP(S) URL"
+            raise ValueError(msg) from exc
+
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or hostname is None:
+            msg = "external_url must be an absolute HTTP(S) URL"
+            raise ValueError(msg)
+        if parsed.username is not None or parsed.password is not None:
+            msg = "external_url must not include credentials"
+            raise ValueError(msg)
+        if parsed.netloc.startswith("["):
+            try:
+                ipaddress.IPv6Address(hostname)
+            except ValueError as exc:
+                msg = "external_url must include a valid IPv6 address"
+                raise ValueError(msg) from exc
+        else:
+            if not _URI_REG_NAME_RE.fullmatch(hostname):
+                msg = "external_url must include a valid ASCII host"
+                raise ValueError(msg)
+            ipv4_parts = hostname.split(".")
+            if len(ipv4_parts) == 4 and all(part.isdecimal() for part in ipv4_parts):
+                try:
+                    ipaddress.IPv4Address(hostname)
+                except ValueError as exc:
+                    msg = "external_url must include a valid IPv4 address"
+                    raise ValueError(msg) from exc
+        if "?" in url or "#" in url:
+            msg = "external_url must not include a query string or fragment"
+            raise ValueError(msg)
+        if _INVALID_PERCENT_ESCAPE_RE.search(url):
+            msg = "external_url must not include invalid percent escapes"
+            raise ValueError(msg)
+        if not _URI_PATH_RE.fullmatch(parsed.path):
+            msg = "external_url path must use valid ASCII URI characters"
+            raise ValueError(msg)
+        decoded_path = unquote_to_bytes(parsed.path)
+        try:
+            decoded_path.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            msg = "external_url path must be valid UTF-8"
+            raise ValueError(msg) from exc
+        if b"\\" in decoded_path or any(byte < 0x20 or byte == 0x7F for byte in decoded_path):
+            msg = "external_url path must not encode backslashes or controls"
+            raise ValueError(msg)
+        if re.search(r"%2f", parsed.path, re.IGNORECASE):
+            msg = "external_url path must not encode path separators"
+            raise ValueError(msg)
+        if any(segment in {b".", b".."} for segment in decoded_path.split(b"/")):
+            msg = "external_url path must not include dot segments"
+            raise ValueError(msg)
+
+        return url.rstrip("/")
 
     def _next_nonce(self) -> str:
         with self._lock:

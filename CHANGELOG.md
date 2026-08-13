@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.1
+
+### Fixed
+
+- `ACMEResponder` now accepts an `external_url` for deployments behind Docker
+  port publishing, NAT, or reverse proxies, ensuring every advertised ACME URL
+  uses one externally reachable responder address.
+- The default HTTPS requirement is now enforced for every outbound ACME request,
+  including server-discovered resource URLs; `allow_insecure=True` remains the
+  explicit opt-in for trusted HTTP deployments. ACME redirects are no longer
+  inherited from an injected HTTP client's redirect policy.
+
 ## 1.1.0
 
 This release completes [lacme #31](https://github.com/turnstonelabs/lacme/issues/31)

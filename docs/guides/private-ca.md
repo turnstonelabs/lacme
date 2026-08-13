@@ -101,6 +101,33 @@ app = Starlette(
 Service nodes connect to `http://ca-server:8443/acme/directory` as their
 ACME directory URL.
 
+### Advertise an External Responder URL
+
+By default, the responder builds its ACME URLs from the ASGI server's listening
+address. When clients reach it through Docker port publishing, NAT, or a reverse
+proxy, configure the canonical externally reachable URL explicitly:
+
+```python
+responder = ACMEResponder(
+    ca=ca,
+    auto_approve=True,
+    external_url="https://ca.example/acme",
+)
+```
+
+Include the responder's external mount prefix (`/acme` above). The configured
+URL is used for the directory and every account, order, authorization,
+challenge, finalize, certificate, and `Location` URL emitted later in the ACME
+flow. It replaces the socket-derived base with one stable canonical endpoint
+for all clients. The responder does not derive public URLs from `Forwarded` or
+`X-Forwarded-*` request headers.
+
+Provide `external_url` as an ASCII `http` or `https` URI. Use punycode for an
+internationalized hostname and percent-encoded UTF-8 bytes for non-ASCII paths.
+Credentials, query strings, fragments, dot segments (`.` or `..`), and encoded
+path separators are rejected so clients and ASGI servers cannot interpret the
+advertised resource URLs differently.
+
 The responder also serves the CA root certificate at `GET /ca.pem`, so service
 nodes can fetch it during bootstrapping:
 

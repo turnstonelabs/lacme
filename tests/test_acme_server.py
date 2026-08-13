@@ -55,6 +55,110 @@ class TestDirectoryEndpoint:
         for key in ("newNonce", "newAccount", "newOrder", "revokeCert", "keyChange"):
             assert data[key].startswith("https://")
 
+    @pytest.mark.anyio
+    async def test_external_url_overrides_request_address(self, ca: CertificateAuthority) -> None:
+        responder = ACMEResponder(
+            ca=ca,
+            auto_approve=True,
+            external_url="https://public.example:9443/acme/",
+        )
+        transport = httpx2.ASGITransport(app=responder, root_path="/acme")  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="http://172.18.0.13:8090",
+        ) as http:
+            resp = await http.get(
+                "/acme/directory",
+                headers={
+                    "Host": "request.example:8443",
+                    "X-Forwarded-Host": "forwarded.example:443",
+                    "X-Forwarded-Proto": "http",
+                },
+            )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "newNonce": "https://public.example:9443/acme/new-nonce",
+            "newAccount": "https://public.example:9443/acme/new-account",
+            "newOrder": "https://public.example:9443/acme/new-order",
+            "revokeCert": "https://public.example:9443/acme/revoke-cert",
+            "keyChange": "https://public.example:9443/acme/key-change",
+        }
+
+
+@pytest.mark.parametrize(
+    ("external_url", "normalized"),
+    [
+        ("http://localhost", "http://localhost"),
+        ("https://ca_service:8443/acme-v1", "https://ca_service:8443/acme-v1"),
+        ("https://[2001:db8::1]:8443/acme/", "https://[2001:db8::1]:8443/acme"),
+        ("https://ca.example/acme%20service", "https://ca.example/acme%20service"),
+        ("https://ca.example/acm%C3%A9", "https://ca.example/acm%C3%A9"),
+        ("https://xn--caf-dma.example/acme", "https://xn--caf-dma.example/acme"),
+        ("http://192.168.0.239:8090/acme", "http://192.168.0.239:8090/acme"),
+        ("http://100.64.0.1/acme", "http://100.64.0.1/acme"),
+        (
+            "http://[64:ff9b::a9fe:a9fe]/acme",
+            "http://[64:ff9b::a9fe:a9fe]/acme",
+        ),
+    ],
+)
+def test_external_url_accepts_supported_uri_forms(
+    ca: CertificateAuthority,
+    external_url: str,
+    normalized: str,
+) -> None:
+    responder = ACMEResponder(ca=ca, external_url=external_url)
+
+    assert responder._get_base_url({}) == normalized
+
+
+@pytest.mark.parametrize(
+    "external_url",
+    [
+        "",
+        "ca.example/acme",
+        "ftp://ca.example/acme",
+        "https://user:secret@ca.example/acme",
+        "https://ca.example/acme?tenant=one",
+        "https://ca.example/acme?",
+        "https://ca.example/acme#section",
+        "https://ca.example/acme#",
+        " https://ca.example/acme",
+        "https://ca.example/not a path",
+        "\x00https://ca.example/acme",
+        "https://ca.example/\x01acme",
+        "https://ca.example/acme\x7f",
+        "https://ca.example:not-a-port/acme",
+        "https://ca.example/acme/./inside",
+        "https://ca.example/acme/../outside",
+        "https://ca.example/acme/%2e/inside",
+        "https://ca.example/acme/%2E%2E/outside",
+        "https://ca.example/acme/%2e%2e%2foutside",
+        "https://ca.example/acme%2foutside",
+        "https://ca.example/acme%5coutside",
+        "https://ca.example/acme%00outside",
+        "https://ca.example/acme/%",
+        "https://ca.example/acme/%2",
+        "https://ca.example/acme/%GG",
+        "https://ca.example/acme%FF",
+        "https://ca.example/acme%C3%28",
+        "https://ca.example/acme%ED%A0%80",
+        "https://café.example/acme",
+        "https://ca.example/acmé",
+        "https://ca.example/\ud800",
+        "https://ca.example\\acme",
+        "https://ca.example/{acme}",
+        "https://{ca}.example/acme",
+        "https://[v1.foo]/acme",
+        "https://999.999.999.999/acme",
+        "https://001.002.003.004/acme",
+    ],
+)
+def test_external_url_rejects_invalid_values(ca: CertificateAuthority, external_url: str) -> None:
+    with pytest.raises(ValueError, match="external_url"):
+        ACMEResponder(ca=ca, external_url=external_url)
+
 
 # ---------------------------------------------------------------------------
 # Nonce endpoint
@@ -113,6 +217,56 @@ class TestFullIssueFlow:
         leaf = certs[0]
         cn = leaf.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
         assert cn == "example.com"
+
+    @pytest.mark.anyio
+    async def test_full_issue_flow_uses_external_url(
+        self,
+        ca: CertificateAuthority,
+        account_key: ec.EllipticCurvePrivateKey,
+    ) -> None:
+        responder = ACMEResponder(
+            ca=ca,
+            auto_approve=True,
+            external_url="https://public.example:9443/acme",
+        )
+        request_hosts: list[str] = []
+
+        async def record_requests(scope, receive, send):
+            headers = dict(scope.get("headers", []))
+            request_hosts.append(headers[b"host"].decode("ascii"))
+            proxied_scope = dict(scope)
+            proxied_scope["scheme"] = "http"
+            proxied_scope["server"] = ("172.18.0.13", 8090)
+            await responder(proxied_scope, receive, send)
+
+        transport = httpx2.ASGITransport(
+            app=record_requests,
+            root_path="/acme",
+        )
+        handler = HTTP01Handler()
+
+        async with (
+            httpx2.AsyncClient(
+                transport=transport,
+                base_url="http://172.18.0.13:8090",
+            ) as http,
+            Client(  # noqa: SIM117
+                directory_url="http://172.18.0.13:8090/acme/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=handler,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+                allow_insecure=True,
+            ) as client,
+        ):
+            bundle = await client.issue(["external.example"])
+
+        assert bundle.domain == "external.example"
+        assert bundle.cert_pem
+        assert request_hosts[0] == "172.18.0.13:8090"
+        assert request_hosts[1:]
+        assert set(request_hosts[1:]) == {"public.example:9443"}
 
     @pytest.mark.anyio
     async def test_multi_domain_issue(

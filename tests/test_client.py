@@ -134,6 +134,145 @@ class TestHTTPClientBoundary:
 
 
 # ---------------------------------------------------------------------------
+# ACME URL transport policy
+# ---------------------------------------------------------------------------
+
+
+class TestURLTransportPolicy:
+    def test_rejects_insecure_directory_by_default(self) -> None:
+        with pytest.raises(ValueError, match="ACME directory URL must use HTTPS"):
+            Client(directory_url="http://ca.internal/directory")
+
+    @pytest.mark.parametrize("directory_url", ["ftp://ca.example/directory", "directory"])
+    def test_rejects_non_http_directory_even_when_insecure_allowed(
+        self, directory_url: str
+    ) -> None:
+        with pytest.raises(ValueError, match="must use HTTP or HTTPS"):
+            Client(directory_url=directory_url, allow_insecure=True)
+
+    @pytest.mark.anyio
+    async def test_rejects_insecure_discovered_nonce_url(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        requests: list[tuple[str, str]] = []
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            requests.append((request.method, str(request.url)))
+            return httpx2.Response(
+                200,
+                json={**DIRECTORY_DATA, "newNonce": "http://100.64.0.1/new-nonce"},
+            )
+
+        async with httpx2.AsyncClient(transport=httpx2.MockTransport(handler)) as http:
+            client = Client(
+                directory_url="https://acme.test/directory",
+                account_key=account_key,
+                http_client=http,
+            )
+            async with client:
+                with pytest.raises(ValueError, match="ACME URL must use HTTPS"):
+                    await client._get_nonce()
+
+        assert requests == [("GET", "https://acme.test/directory")]
+
+    @pytest.mark.anyio
+    async def test_rejects_insecure_discovered_signed_request_url(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        requests: list[tuple[str, str]] = []
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            requests.append((request.method, str(request.url)))
+            return _json_response(
+                {
+                    **DIRECTORY_DATA,
+                    "newAccount": "http://[64:ff9b::a9fe:a9fe]/new-account",
+                }
+            )
+
+        async with httpx2.AsyncClient(transport=httpx2.MockTransport(handler)) as http:
+            client = Client(
+                directory_url="https://acme.test/directory",
+                account_key=account_key,
+                http_client=http,
+            )
+            async with client:
+                with pytest.raises(ValueError, match="ACME URL must use HTTPS"):
+                    await client.create_account()
+
+        assert requests == [("GET", "https://acme.test/directory")]
+
+    @pytest.mark.anyio
+    async def test_allow_insecure_permits_all_discovered_http_urls(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        requests: list[tuple[str, str]] = []
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            requests.append((request.method, str(request.url)))
+            if request.url.path == "/directory":
+                return httpx2.Response(
+                    200,
+                    json={
+                        **DIRECTORY_DATA,
+                        "newNonce": "http://100.64.0.1/new-nonce",
+                        "newAccount": "http://192.168.0.239:8090/new-account",
+                    },
+                )
+            if request.url.path == "/new-nonce":
+                return httpx2.Response(200, headers={"replay-nonce": _next_nonce()})
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid", "contact": []},
+                    status=201,
+                    headers={"location": "http://192.168.0.239:8090/acct/1"},
+                )
+            return httpx2.Response(404)
+
+        async with httpx2.AsyncClient(transport=httpx2.MockTransport(handler)) as http:
+            client = Client(
+                directory_url="http://192.168.0.239:8090/directory",
+                account_key=account_key,
+                http_client=http,
+                allow_insecure=True,
+            )
+            async with client:
+                account = await client.create_account()
+
+        assert account.status == AccountStatus.VALID
+        assert requests == [
+            ("GET", "http://192.168.0.239:8090/directory"),
+            ("HEAD", "http://100.64.0.1/new-nonce"),
+            ("POST", "http://192.168.0.239:8090/new-account"),
+        ]
+
+    @pytest.mark.anyio
+    async def test_does_not_follow_injected_client_redirect_policy(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        requests: list[tuple[str, str]] = []
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            requests.append((request.method, str(request.url)))
+            return httpx2.Response(302, headers={"location": "http://100.64.0.1/directory"})
+
+        async with httpx2.AsyncClient(
+            transport=httpx2.MockTransport(handler),
+            follow_redirects=True,
+        ) as http:
+            client = Client(
+                directory_url="https://acme.test/directory",
+                account_key=account_key,
+                http_client=http,
+            )
+            async with client:
+                with pytest.raises(httpx2.HTTPStatusError):
+                    await client.directory()
+
+        assert requests == [("GET", "https://acme.test/directory")]
+
+
+# ---------------------------------------------------------------------------
 # Directory
 # ---------------------------------------------------------------------------
 
