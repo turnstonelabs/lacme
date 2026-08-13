@@ -256,6 +256,7 @@ def _cmd_issue(args: argparse.Namespace) -> int:
 
 
 def _cmd_renew(args: argparse.Namespace) -> int:
+    from lacme._identifiers import certificate_bundle_identifier_values
     from lacme.challenges.http01 import HTTP01Handler
     from lacme.store import FileStore
     from lacme.sync import SyncClient
@@ -282,7 +283,8 @@ def _cmd_renew(args: argparse.Namespace) -> int:
     ) as client:
         for bundle in expiring:
             try:
-                new_bundle = client.issue(list(bundle.domains), challenge_type=challenge_type)
+                identifier_values = certificate_bundle_identifier_values(bundle)
+                new_bundle = client.issue(identifier_values, challenge_type=challenge_type)
                 print(f"Renewed: {bundle.domain} (expires {new_bundle.expires_at.isoformat()})")  # noqa: T201
                 renewed_count += 1
             except Exception as exc:

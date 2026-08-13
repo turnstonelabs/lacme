@@ -8,7 +8,6 @@ Mount in your web framework (Starlette, FastAPI, etc.) at a path prefix.
 
 from __future__ import annotations
 
-import base64
 import ipaddress
 import json
 import logging
@@ -19,6 +18,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from urllib.parse import unquote_to_bytes, urlsplit
 
+from lacme._identifiers import (
+    UnsupportedIdentifierTypeError,
+    decode_and_validate_csr,
+    normalize_protocol_identifiers,
+)
+from lacme._jose import PayloadMode, parse_unverified_jws
 from lacme.crypto import b64url_encode
 
 if TYPE_CHECKING:
@@ -64,7 +69,7 @@ class _Account:
 @dataclass
 class _Order:
     url: str
-    domains: list[str]
+    identifiers: list[dict[str, str]]
     status: str = "pending"
     authz_urls: list[str] = field(default_factory=list)
     finalize_url: str = ""
@@ -76,6 +81,7 @@ class _Authorization:
     url: str
     identifier_value: str
     identifier_type: str = "dns"
+    wildcard: bool = False
     status: str = "pending"
     token: str = ""
     challenge_url: str = ""
@@ -180,36 +186,66 @@ class ACMEResponder:
             return
 
         if path == "/new-account":
-            raw = await self._read_body(receive)
+            raw = await self._read_valid_jws(receive, send, extra_headers)
+            if raw is None:
+                return
             await self._handle_new_account(send, raw, base_url, extra_headers)
             return
 
         if path == "/new-order":
-            raw = await self._read_body(receive)
+            raw = await self._read_valid_jws(receive, send, extra_headers)
+            if raw is None:
+                return
             await self._handle_new_order(send, raw, base_url, extra_headers)
             return
 
         if path.startswith("/authz/"):
-            _ = await self._read_body(receive)  # consume body
+            raw = await self._read_valid_jws(
+                receive,
+                send,
+                extra_headers,
+                payload_mode="empty",
+            )
+            if raw is None:
+                return
             await self._handle_authz(send, path, base_url, extra_headers)
             return
 
         if path.startswith("/chall/"):
-            raw = await self._read_body(receive)
+            raw = await self._read_valid_jws(receive, send, extra_headers)
+            if raw is None:
+                return
             await self._handle_challenge(send, raw, path, base_url, extra_headers)
             return
 
         if path.startswith("/finalize/"):
-            raw = await self._read_body(receive)
+            raw = await self._read_valid_jws(receive, send, extra_headers)
+            if raw is None:
+                return
             await self._handle_finalize(send, raw, path, base_url, extra_headers)
             return
 
         if path.startswith("/order/"):
-            _ = await self._read_body(receive)  # consume body
+            raw = await self._read_valid_jws(
+                receive,
+                send,
+                extra_headers,
+                payload_mode="empty",
+            )
+            if raw is None:
+                return
             await self._handle_order(send, path, base_url, extra_headers)
             return
 
         if path.startswith("/cert/"):
+            raw = await self._read_valid_jws(
+                receive,
+                send,
+                extra_headers,
+                payload_mode="empty",
+            )
+            if raw is None:
+                return
             await self._handle_cert(send, path, base_url, extra_headers)
             return
 
@@ -218,12 +254,16 @@ class ACMEResponder:
             return
 
         if path == "/key-change":
-            raw = await self._read_body(receive)
+            raw = await self._read_valid_jws(receive, send, extra_headers)
+            if raw is None:
+                return
             await self._handle_key_change(send, raw, extra_headers)
             return
 
         if path == "/revoke-cert":
-            _ = await self._read_body(receive)  # consume body
+            raw = await self._read_valid_jws(receive, send, extra_headers)
+            if raw is None:
+                return
             await self._handle_revoke(send, extra_headers)
             return
 
@@ -250,14 +290,26 @@ class ACMEResponder:
     async def _handle_new_account(
         self, send: Send, raw: bytes, base_url: str, headers: dict[str, str]
     ) -> None:
-        body = self._parse_jws_body(raw)
-        only_existing = body.get("onlyReturnExisting", False)
+        try:
+            body = self._parse_jws_body(raw)
+            only_existing = body.get("onlyReturnExisting", False)
 
-        protected = self._parse_jws_protected(raw)
-        jwk = protected.get("jwk", {})
-        from lacme.crypto import jwk_thumbprint
+            protected = self._parse_jws_protected(raw)
+            jwk = protected.get("jwk", {})
+            from lacme.crypto import jwk_thumbprint
 
-        thumbprint = jwk_thumbprint(jwk)
+            thumbprint = jwk_thumbprint(jwk)
+        except (KeyError, TypeError, ValueError) as exc:
+            await self._send_error(
+                send,
+                status=400,
+                body={
+                    "type": "urn:ietf:params:acme:error:malformed",
+                    "detail": str(exc),
+                },
+                headers=headers,
+            )
+            return
 
         with self._lock:
             existing_acct: _Account | None = None
@@ -298,9 +350,34 @@ class ACMEResponder:
     async def _handle_new_order(
         self, send: Send, raw: bytes, base_url: str, headers: dict[str, str]
     ) -> None:
-        body = self._parse_jws_body(raw)
-        identifiers = body.get("identifiers", [])
-        domains = [i["value"] for i in identifiers]
+        try:
+            body = self._parse_jws_body(raw)
+            if not isinstance(body, dict):
+                msg = "newOrder payload must be an object"
+                raise ValueError(msg)
+            identifiers = normalize_protocol_identifiers(body.get("identifiers"))
+        except UnsupportedIdentifierTypeError as exc:
+            await self._send_error(
+                send,
+                status=400,
+                body={
+                    "type": "urn:ietf:params:acme:error:unsupportedIdentifier",
+                    "detail": str(exc),
+                },
+                headers=headers,
+            )
+            return
+        except (TypeError, ValueError) as exc:
+            await self._send_error(
+                send,
+                status=400,
+                body={
+                    "type": "urn:ietf:params:acme:error:malformed",
+                    "detail": str(exc),
+                },
+                headers=headers,
+            )
+            return
 
         with self._lock:
             self._order_counter += 1
@@ -314,10 +391,13 @@ class ACMEResponder:
                 chall_url = f"{base_url}/chall/{self._authz_counter}"
                 token = b64url_encode(secrets.token_bytes(32))
 
+                wildcard = ident["type"] == "dns" and ident["value"].startswith("*.")
+                identifier_value = ident["value"][2:] if wildcard else ident["value"]
                 authz = _Authorization(
                     url=authz_url,
-                    identifier_value=ident["value"],
-                    identifier_type=ident.get("type", "dns"),
+                    identifier_value=identifier_value,
+                    identifier_type=ident["type"],
+                    wildcard=wildcard,
                     token=token,
                     challenge_url=chall_url,
                     dns_challenge_url=f"{chall_url}-dns",
@@ -327,7 +407,7 @@ class ACMEResponder:
 
             order = _Order(
                 url=order_url,
-                domains=domains,
+                identifiers=identifiers,
                 authz_urls=authz_urls,
                 finalize_url=finalize_url,
             )
@@ -355,30 +435,41 @@ class ACMEResponder:
             await self._send_error(send, status=404, body={"type": "not-found"}, headers=headers)
             return
 
+        challenges = []
+        if not authz.wildcard:
+            challenges.append(
+                {
+                    "type": "http-01",
+                    "url": authz.challenge_url,
+                    "token": authz.token,
+                    "status": authz.challenge_status,
+                }
+            )
+        if authz.identifier_type == "dns":
+            challenges.append(
+                {
+                    "type": "dns-01",
+                    "url": authz.dns_challenge_url,
+                    "token": authz.token,
+                    "status": authz.challenge_status,
+                }
+            )
+
+        body: dict[str, Any] = {
+            "status": authz.status,
+            "identifier": {
+                "type": authz.identifier_type,
+                "value": authz.identifier_value,
+            },
+            "challenges": challenges,
+        }
+        if authz.wildcard:
+            body["wildcard"] = True
+
         await self._send_json(
             send,
             status=200,
-            body={
-                "status": authz.status,
-                "identifier": {
-                    "type": authz.identifier_type,
-                    "value": authz.identifier_value,
-                },
-                "challenges": [
-                    {
-                        "type": "http-01",
-                        "url": authz.challenge_url,
-                        "token": authz.token,
-                        "status": authz.challenge_status,
-                    },
-                    {
-                        "type": "dns-01",
-                        "url": authz.dns_challenge_url,
-                        "token": authz.token,
-                        "status": authz.challenge_status,
-                    },
-                ],
-            },
+            body=body,
             headers=headers,
         )
 
@@ -396,10 +487,10 @@ class ACMEResponder:
             target_authz: _Authorization | None = None
             is_dns = False
             for authz in self._authorizations.values():
-                if authz.challenge_url == chall_url:
+                if not authz.wildcard and authz.challenge_url == chall_url:
                     target_authz = authz
                     break
-                if authz.dns_challenge_url == chall_url:
+                if authz.identifier_type == "dns" and authz.dns_challenge_url == chall_url:
                     target_authz = authz
                     is_dns = True
                     break
@@ -413,8 +504,13 @@ class ACMEResponder:
                 target_authz.challenge_status = "valid"
                 target_authz.status = "valid"
         elif self._challenge_validator is not None:
+            callback_identifier = (
+                f"*.{target_authz.identifier_value}"
+                if target_authz.wildcard
+                else target_authz.identifier_value
+            )
             valid = await self._challenge_validator.validate(
-                target_authz.identifier_value,
+                callback_identifier,
                 target_authz.identifier_type,
                 target_authz.token,
                 target_authz.key_authorization,
@@ -481,14 +577,30 @@ class ACMEResponder:
             )
             return
 
-        # Extract CSR from body
-        body = self._parse_jws_body(raw)
-        csr_b64 = body.get("csr", "")
-        padded = csr_b64 + "=" * (-len(csr_b64) % 4)
-        csr_der = base64.urlsafe_b64decode(padded)
+        # The CSR must contain exactly the order's typed identifier set.
+        try:
+            body = self._parse_jws_body(raw)
+            if not isinstance(body, dict):
+                msg = "Finalize payload must be an object"
+                raise ValueError(msg)
+            csr_der, csr_identifiers = decode_and_validate_csr(
+                body.get("csr"),
+                order.identifiers,
+            )
+        except (TypeError, ValueError) as exc:
+            await self._send_error(
+                send,
+                status=400,
+                body={
+                    "type": "urn:ietf:params:acme:error:badCSR",
+                    "detail": str(exc),
+                },
+                headers=headers,
+            )
+            return
 
         # Sign with the CA
-        bundle = self._ca.issue_from_csr(csr_der)
+        bundle = self._ca.issue_from_csr(csr_der, validated_identifiers=csr_identifiers)
         cert_pem = bundle.fullchain_pem.decode("ascii")
 
         with self._lock:
@@ -504,7 +616,7 @@ class ACMEResponder:
             status=200,
             body={
                 "status": "valid",
-                "identifiers": [{"type": "dns", "value": d} for d in order.domains],
+                "identifiers": order.identifiers,
                 "authorizations": order.authz_urls,
                 "finalize": order.finalize_url,
                 "certificate": cert_url,
@@ -527,16 +639,16 @@ class ACMEResponder:
         with self._lock:
             if order.status == "pending":
                 all_valid = all(
-                    self._authorizations[aurl].status == "valid"
+                    (authz := self._authorizations.get(aurl)) is not None
+                    and authz.status == "valid"
                     for aurl in order.authz_urls
-                    if aurl in self._authorizations
                 )
                 if all_valid:
                     order.status = "ready"
 
         body: dict[str, Any] = {
             "status": order.status,
-            "identifiers": [{"type": "dns", "value": d} for d in order.domains],
+            "identifiers": order.identifiers,
             "authorizations": order.authz_urls,
             "finalize": order.finalize_url,
         }
@@ -706,6 +818,31 @@ class ACMEResponder:
                 break
         return bytes(body)
 
+    async def _read_valid_jws(
+        self,
+        receive: Receive,
+        send: Send,
+        headers: dict[str, str],
+        *,
+        payload_mode: PayloadMode = "object",
+    ) -> bytes | None:
+        """Read and structurally validate an ACME flattened-JWS request."""
+        try:
+            raw = await self._read_body(receive)
+            parse_unverified_jws(raw, payload_mode=payload_mode)
+        except (TypeError, ValueError) as exc:
+            await self._send_error(
+                send,
+                status=400,
+                body={
+                    "type": "urn:ietf:params:acme:error:malformed",
+                    "detail": str(exc),
+                },
+                headers=headers,
+            )
+            return None
+        return raw
+
     async def _send_json(
         self,
         send: Send,
@@ -746,21 +883,9 @@ class ACMEResponder:
     @staticmethod
     def _parse_jws_body(raw: bytes) -> dict[str, Any]:
         """Extract the payload from a JWS POST body."""
-        data = json.loads(raw)
-        payload_b64 = data.get("payload", "")
-        if not payload_b64:
-            return {}
-        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
-        decoded = base64.urlsafe_b64decode(padded)
-        if not decoded:
-            return {}
-        return json.loads(decoded)  # type: ignore[no-any-return]
+        return parse_unverified_jws(raw)[1]
 
     @staticmethod
     def _parse_jws_protected(raw: bytes) -> dict[str, Any]:
         """Extract the protected header from a JWS POST body."""
-        data = json.loads(raw)
-        protected_b64 = data.get("protected", "")
-        padded = protected_b64 + "=" * (-len(protected_b64) % 4)
-        decoded = base64.urlsafe_b64decode(padded)
-        return json.loads(decoded)  # type: ignore[no-any-return]
+        return parse_unverified_jws(raw)[0]

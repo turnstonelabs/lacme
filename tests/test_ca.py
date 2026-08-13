@@ -7,10 +7,16 @@ from ipaddress import IPv4Address
 from typing import TYPE_CHECKING
 
 import pytest
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import (
     BasicConstraints,
+    CertificateSigningRequestBuilder,
+    DNSName,
     ExtendedKeyUsage,
+    IPAddress,
     KeyUsage,
+    Name,
+    NameAttribute,
     SubjectAlternativeName,
     SubjectKeyIdentifier,
     load_pem_x509_certificates,
@@ -233,11 +239,28 @@ class TestCAIssueFromCSR:
         bundle = ca.issue_from_csr(csr_der)
         cert = load_pem_x509_certificates(bundle.cert_pem)[0]
         san = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
-        from cryptography.x509 import DNSName
-
         dns_names = san.get_values_for_type(DNSName)
         assert "a.internal" in dns_names
         assert "b.internal" in dns_names
+
+    def test_issue_from_csr_preserves_mixed_identifier_order(self) -> None:
+        ca = CertificateAuthority()
+        ca.init()
+        key = generate_ec_key()
+        address = IPv4Address("192.0.2.10")
+        csr_der = generate_csr(key, [address, "node.internal"])
+
+        bundle = ca.issue_from_csr(csr_der)
+
+        assert bundle.domains == ("192.0.2.10", "node.internal")
+        cert = load_pem_x509_certificates(bundle.cert_pem)[0]
+        san = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
+        assert [(type(name), name.value) for name in san] == [
+            (IPAddress, address),
+            (DNSName, "node.internal"),
+        ]
+        common_name = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+        assert common_name == "192.0.2.10"
 
     def test_issue_from_csr_empty_key_pem(self) -> None:
         ca = CertificateAuthority()
@@ -246,6 +269,38 @@ class TestCAIssueFromCSR:
         csr_der = generate_csr(key, ["csr.internal"])
         bundle = ca.issue_from_csr(csr_der)
         assert bundle.key_pem == b""
+
+    def test_issue_from_csr_treats_sans_as_authoritative_over_different_cn(self) -> None:
+        ca = CertificateAuthority()
+        ca.init()
+        key = generate_ec_key()
+        csr = (
+            CertificateSigningRequestBuilder()
+            .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, "cn-only.example")]))
+            .add_extension(SubjectAlternativeName([DNSName("san-only.example")]), critical=False)
+            .sign(key, hashes.SHA256())
+        )
+
+        bundle = ca.issue_from_csr(csr.public_bytes(serialization.Encoding.DER))
+
+        assert bundle.domains == ("san-only.example",)
+        cert = load_pem_x509_certificates(bundle.cert_pem)[0]
+        sans = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
+        assert sans.get_values_for_type(DNSName) == ["san-only.example"]
+
+    def test_issue_from_csr_falls_back_to_cn_when_san_is_absent(self) -> None:
+        ca = CertificateAuthority()
+        ca.init()
+        key = generate_ec_key()
+        csr = (
+            CertificateSigningRequestBuilder()
+            .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, "cn-only.internal")]))
+            .sign(key, hashes.SHA256())
+        )
+
+        bundle = ca.issue_from_csr(csr.public_bytes(serialization.Encoding.DER))
+
+        assert bundle.domains == ("cn-only.internal",)
 
 
 # ---------------------------------------------------------------------------
@@ -350,7 +405,7 @@ class TestCAErrors:
     def test_issue_empty_names_raises(self) -> None:
         ca = CertificateAuthority()
         ca.init()
-        with pytest.raises(CertificateAuthorityError, match="At least one name"):
+        with pytest.raises(CertificateAuthorityError, match="At least one identifier"):
             ca.issue([])
 
 

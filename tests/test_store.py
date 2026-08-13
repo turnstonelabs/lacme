@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
+from lacme.errors import ACMEStoreError
 from lacme.store import FileStore, MemoryStore, Store
 
 if TYPE_CHECKING:
@@ -80,6 +82,137 @@ class TestFileStore:
         store = FileStore(tmp_path)
         assert store.list_certs() == []
 
+    def test_list_certs_rejects_metadata_in_unexpected_directory(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        store = FileStore(tmp_path)
+        saved = store.save_cert(make_test_bundle("node.example"))
+        assert saved.cert_path is not None
+        unexpected_dir = tmp_path / "certs" / "misplaced.example"
+        saved.cert_path.parent.rename(unexpected_dir)
+
+        with pytest.raises(ACMEStoreError, match="unexpected directory"):
+            store.list_certs()
+
+    def test_ordinary_dns_name_keeps_existing_directory_layout(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        result = FileStore(tmp_path).save_cert(make_test_bundle("node.example"))
+
+        assert result.cert_path is not None
+        assert result.cert_path.parent == tmp_path / "certs" / "node.example"
+
+    @pytest.mark.parametrize("domain", ["2001:db8::1", "*.example.com"])
+    def test_unsafe_domain_component_roundtrip_is_portable(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+        domain: str,
+    ) -> None:
+        store = FileStore(tmp_path)
+        saved = store.save_cert(make_test_bundle(domain))
+
+        assert saved.cert_path is not None
+        component = saved.cert_path.parent.name
+        assert component.startswith("lacme-v2-")
+        assert not component.startswith(".")
+        assert ":" not in component
+        assert "*" not in component
+        assert store.load_cert(domain) is not None
+        assert [bundle.domain for bundle in store.list_certs()] == [domain]
+        assert store.delete_cert(domain) is True
+        assert store.load_cert(domain) is None
+
+    def test_load_rejects_metadata_for_a_different_key(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        store = FileStore(tmp_path)
+        saved = store.save_cert(make_test_bundle("node.example"))
+        assert saved.cert_path is not None
+        meta_path = saved.cert_path.parent / "meta.json"
+        metadata = json.loads(meta_path.read_text())
+        metadata["domain"] = "other.example"
+        meta_path.write_text(json.dumps(metadata))
+
+        with pytest.raises(ACMEStoreError, match="belongs to"):
+            store.load_cert("node.example")
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlink creation may require privileges")
+    def test_sibling_symlink_cannot_overwrite_or_delete_target(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        certs_dir = tmp_path / "certs"
+        target_dir = certs_dir / "target"
+        target_dir.mkdir(parents=True)
+        target_cert = target_dir / "cert.pem"
+        target_cert.write_bytes(b"original")
+        sentinel = target_dir / "sentinel"
+        sentinel.write_text("keep")
+        (certs_dir / "alias").symlink_to(target_dir, target_is_directory=True)
+        store = FileStore(tmp_path)
+
+        with pytest.raises(ValueError, match="path traversal"):
+            store.save_cert(make_test_bundle("alias"))
+        with pytest.raises(ValueError, match="path traversal"):
+            store.delete_cert("alias")
+
+        assert target_cert.read_bytes() == b"original"
+        assert sentinel.read_text() == "keep"
+        assert target_dir.exists()
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlink creation may require privileges")
+    def test_list_rejects_sibling_symlink_entry(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        store = FileStore(tmp_path)
+        saved = store.save_cert(make_test_bundle("target"))
+        assert saved.cert_path is not None
+        alias_dir = tmp_path / "certs" / "alias"
+        alias_dir.symlink_to(saved.cert_path.parent, target_is_directory=True)
+
+        with pytest.raises(ACMEStoreError, match="Unexpected.*symbolic link"):
+            store.list_certs()
+
+        assert saved.cert_path.read_bytes() == saved.cert_pem
+        assert alias_dir.is_symlink()
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlink creation may require privileges")
+    def test_symlinked_certificate_root_is_rejected_by_every_operation(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        base = tmp_path / "store"
+        backing_dir = tmp_path / "backing"
+        base.mkdir()
+        backing_dir.mkdir()
+        sentinel = backing_dir / "sentinel"
+        sentinel.write_text("keep")
+        (base / "certs").symlink_to(backing_dir, target_is_directory=True)
+        store = FileStore(base)
+
+        with pytest.raises(ACMEStoreError, match="root must not be a symbolic link"):
+            store.save_cert(make_test_bundle("node.example"))
+        with pytest.raises(ACMEStoreError, match="root must not be a symbolic link"):
+            store.load_cert("node.example")
+        with pytest.raises(ACMEStoreError, match="root must not be a symbolic link"):
+            store.list_certs()
+        with pytest.raises(ACMEStoreError, match="root must not be a symbolic link"):
+            store.delete_cert("node.example")
+
+        assert sentinel.read_text() == "keep"
+        assert list(backing_dir.iterdir()) == [sentinel]
+
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
     def test_account_key_permissions(self, tmp_path: Path) -> None:
         store = FileStore(tmp_path)
@@ -101,6 +234,36 @@ class TestFileStore:
         store = FileStore(tmp_path)
         result = store.delete_cert("nonexistent.example.com")
         assert result is False
+
+    def test_delete_cert_without_metadata_leaves_directory(self, tmp_path: Path) -> None:
+        domain_dir = tmp_path / "certs" / "incomplete.example"
+        domain_dir.mkdir(parents=True)
+        sentinel = domain_dir / "sentinel"
+        sentinel.write_text("keep")
+
+        assert FileStore(tmp_path).delete_cert("incomplete.example") is False
+        assert sentinel.read_text() == "keep"
+
+    def test_delete_cert_rejects_foreign_metadata_without_deleting(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        store = FileStore(tmp_path)
+        saved = store.save_cert(make_test_bundle("node.example"))
+        assert saved.cert_path is not None
+        domain_dir = saved.cert_path.parent
+        meta_path = domain_dir / "meta.json"
+        metadata = json.loads(meta_path.read_text())
+        metadata["domain"] = "other.example"
+        meta_path.write_text(json.dumps(metadata))
+
+        with pytest.raises(ACMEStoreError, match="belongs to"):
+            store.delete_cert("node.example")
+
+        assert domain_dir.exists()
+        assert (domain_dir / "cert.pem").exists()
+        assert meta_path.exists()
 
     @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
     def test_cert_file_permissions(
@@ -306,13 +469,56 @@ class TestPathTraversal:
 
         store = FileStore(tmp_path)
         bundle = replace(make_test_bundle(), domain="../../../tmp/evil")
-        with pytest.raises(ValueError, match="Invalid domain name"):
+        with pytest.raises(ValueError, match="Invalid certificate key"):
             store.save_cert(bundle)
 
     def test_load_cert_path_traversal_rejected(self, tmp_path: Path) -> None:
         store = FileStore(tmp_path)
-        with pytest.raises(ValueError, match="Invalid domain name"):
+        with pytest.raises(ValueError, match="Invalid certificate key"):
             store.load_cert("../../../etc/passwd")
+
+    @pytest.mark.parametrize("domain", [".", ".."])
+    def test_delete_dot_domain_key_cannot_remove_cert_store(
+        self,
+        tmp_path: Path,
+        domain: str,
+    ) -> None:
+        certs_dir = tmp_path / "certs"
+        victim_dir = certs_dir / "victim.example"
+        victim_dir.mkdir(parents=True)
+        sentinel = victim_dir / "sentinel"
+        sentinel.write_text("keep")
+        (certs_dir / "meta.json").write_text(json.dumps({"domain": domain}))
+
+        with pytest.raises(ValueError, match="dot component"):
+            FileStore(tmp_path).delete_cert(domain)
+
+        assert certs_dir.exists()
+        assert sentinel.read_text() == "keep"
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlink creation may require privileges")
+    def test_domain_resolution_rejects_symlink_to_cert_store_root(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        certs_dir = tmp_path / "certs"
+        certs_dir.mkdir()
+        domain = "node.example"
+        (certs_dir / domain).symlink_to(certs_dir, target_is_directory=True)
+        with pytest.raises(ValueError, match="path traversal"):
+            FileStore(tmp_path)._resolve_domain_dir(domain)
+
+    def test_backslash_separator_rejected_on_every_platform(
+        self,
+        tmp_path: Path,
+        make_test_bundle: Callable[..., CertBundle],
+    ) -> None:
+        from dataclasses import replace
+
+        store = FileStore(tmp_path)
+        bundle = replace(make_test_bundle(), domain="..\\evil")
+        with pytest.raises(ValueError, match="path separator"):
+            store.save_cert(bundle)
 
     def test_normal_domain_accepted(
         self, tmp_path: Path, make_test_bundle: Callable[..., CertBundle]

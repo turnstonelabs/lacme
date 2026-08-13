@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from lacme._types import IdentifierValue
+
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.x509 import (
@@ -161,26 +163,26 @@ def key_authorization(token: str, account_key: ec.EllipticCurvePrivateKey) -> st
 
 def generate_csr(
     key: ec.EllipticCurvePrivateKey,
-    domains: Sequence[str | ipaddress.IPv4Address | ipaddress.IPv6Address],
+    domains: Sequence[IdentifierValue],
 ) -> bytes:
-    """Generate a DER-encoded CSR with *domains* as SANs.
+    """Generate a DER-encoded CSR with *domains* represented as typed SANs.
 
     CN is set to the string representation of the first identifier.
     Strings are treated as DNS names; :class:`~ipaddress.IPv4Address` and
     :class:`~ipaddress.IPv6Address` objects become IP SANs.
     """
-    if not domains:
-        msg = "At least one identifier is required"
-        raise ValueError(msg)
+    from lacme._identifiers import normalize_identifier_values
+
+    identifier_values = normalize_identifier_values(domains)
     san_entries: list[DNSName | IPAddress] = []
-    for entry in domains:
+    for entry in identifier_values:
         if isinstance(entry, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
             san_entries.append(IPAddress(entry))
         else:
             san_entries.append(DNSName(entry))
     builder = (
         CertificateSigningRequestBuilder()
-        .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, str(domains[0]))]))
+        .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, str(identifier_values[0]))]))
         .add_extension(
             SubjectAlternativeName(san_entries),
             critical=False,

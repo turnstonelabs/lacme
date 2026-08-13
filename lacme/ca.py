@@ -42,9 +42,11 @@ from cryptography.x509 import (
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from cryptography import x509
 
-    from lacme._types import CertBundle
+    from lacme._types import CertBundle, IdentifierValue
     from lacme.events import EventDispatcher
     from lacme.store import Store
 
@@ -172,7 +174,7 @@ class CertificateAuthority:
 
     def issue(
         self,
-        names: str | list[str | ipaddress.IPv4Address | ipaddress.IPv6Address],
+        names: IdentifierValue | Sequence[IdentifierValue],
         *,
         client: bool = False,
         validity_days: int = 1,
@@ -193,20 +195,16 @@ class CertificateAuthority:
         Raises:
             CertificateAuthorityError: If not initialized.
         """
+        from lacme._identifiers import normalize_identifier_values
+        from lacme.errors import CertificateAuthorityError
+
+        try:
+            name_list = normalize_identifier_values(names)
+        except (TypeError, ValueError) as exc:
+            raise CertificateAuthorityError(str(exc)) from exc
+
         with self._lock:
             self._check_initialized()
-
-            # Normalize names to a list.
-            if isinstance(names, str):
-                name_list: list[str | ipaddress.IPv4Address | ipaddress.IPv6Address] = [names]
-            else:
-                name_list = list(names)
-
-            if not name_list:
-                from lacme.errors import CertificateAuthorityError
-
-                msg = "At least one name is required"
-                raise CertificateAuthorityError(msg)
 
             # Generate a new key for this certificate.
             from lacme.crypto import generate_ec_key
@@ -249,14 +247,18 @@ class CertificateAuthority:
         self,
         csr_der: bytes,
         *,
+        validated_identifiers: Sequence[IdentifierValue] | None = None,
         client: bool = False,
         validity_days: int = 1,
         validity_hours: int | None = None,
     ) -> CertBundle:
         """Sign an externally-provided CSR.
 
-        Used by ACMEResponder's finalize endpoint.  Extracts SANs from
-        the CSR.  The CSR's public key is used (no new key generated).
+        Used by ACMEResponder's finalize endpoint. The CSR's public key is
+        always used (no new key generated). By default SANs are authoritative
+        with a common-name fallback. Internal ACME callers may supply
+        ``validated_identifiers`` only after binding that exact set to the CSR
+        and order; those values become the issued SANs.
 
         Returns:
             CertBundle (key_pem will be empty bytes since we don't have
@@ -271,32 +273,25 @@ class CertificateAuthority:
             self._check_initialized()
 
             # Parse and verify the CSR.
-            csr = load_der_x509_csr(csr_der)
+            try:
+                csr = load_der_x509_csr(csr_der)
+            except ValueError as exc:
+                msg = "CSR is not valid DER"
+                raise CertificateAuthorityError(msg) from exc
             if not csr.is_signature_valid:
                 msg = "CSR signature is invalid"
                 raise CertificateAuthorityError(msg)
 
-            # Extract SANs from the CSR.
-            name_list: list[str | ipaddress.IPv4Address | ipaddress.IPv6Address] = []
+            from lacme._identifiers import csr_ca_identifier_values, normalize_identifier_values
+
             try:
-                san_ext = csr.extensions.get_extension_for_class(SubjectAlternativeName)
-                for dns_name in san_ext.value.get_values_for_type(DNSName):
-                    name_list.append(dns_name)
-                for ip_addr in san_ext.value.get_values_for_type(X509IPAddress):
-                    if isinstance(ip_addr, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
-                        name_list.append(ip_addr)
-            except Exception:  # noqa: BLE001 — extension may not be present
-                pass
-
-            # Fall back to CN if no SANs.
-            if not name_list:
-                cn_attrs = csr.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-                if cn_attrs:
-                    name_list.append(str(cn_attrs[0].value))
-
-            if not name_list:
-                msg = "CSR contains no SANs and no CN"
-                raise CertificateAuthorityError(msg)
+                name_list = (
+                    csr_ca_identifier_values(csr)
+                    if validated_identifiers is None
+                    else normalize_identifier_values(validated_identifiers)
+                )
+            except (TypeError, ValueError) as exc:
+                raise CertificateAuthorityError(str(exc)) from exc
 
             cert, not_valid_after = self._build_leaf_cert(
                 public_key=csr.public_key(),
@@ -360,7 +355,7 @@ class CertificateAuthority:
         self,
         *,
         public_key: Any,
-        names: list[str | ipaddress.IPv4Address | ipaddress.IPv6Address],
+        names: list[IdentifierValue],
         client: bool,
         validity_days: int,
         validity_hours: int | None,
@@ -450,7 +445,7 @@ class CertificateAuthority:
     @staticmethod
     def _build_bundle(
         *,
-        names: list[str | ipaddress.IPv4Address | ipaddress.IPv6Address],
+        names: list[IdentifierValue],
         cert_pem: bytes,
         fullchain_pem: bytes,
         key_pem: bytes,

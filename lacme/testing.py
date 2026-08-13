@@ -6,16 +6,23 @@ Provides :class:`MockACMEServer`, an in-process ACME server backed by
 
 from __future__ import annotations
 
-import base64
-import datetime
-import json
 import secrets
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx2
 
-from lacme.crypto import b64url_encode
+from lacme._identifiers import (
+    UnsupportedIdentifierTypeError,
+    decode_and_validate_csr,
+    normalize_protocol_identifiers,
+)
+from lacme._jose import parse_unverified_jws
+from lacme.ca import CertificateAuthority
+from lacme.crypto import b64url_encode, jwk_thumbprint
+
+if TYPE_CHECKING:
+    from lacme._types import IdentifierValue
 
 # ---------------------------------------------------------------------------
 # Internal state models
@@ -33,7 +40,7 @@ class _MockAccount:
 @dataclass
 class _MockOrder:
     url: str
-    domains: list[str]
+    identifiers: list[dict[str, str]]
     status: str = "pending"
     authz_urls: list[str] = field(default_factory=list)
     finalize_url: str = ""
@@ -44,6 +51,8 @@ class _MockOrder:
 class _MockAuthorization:
     url: str
     domain: str
+    identifier_type: str = "dns"
+    wildcard: bool = False
     status: str = "pending"
     token: str = ""
     challenge_url: str = ""
@@ -90,6 +99,8 @@ class MockACMEServer:
     ) -> None:
         self._auto_validate = auto_validate
         self._base_url = base_url.rstrip("/")
+        self._ca = CertificateAuthority()
+        self._ca.init(cn="lacme Mock ACME CA")
 
         self._accounts: dict[str, _MockAccount] = {}
         self._orders: dict[str, _MockOrder] = {}
@@ -109,7 +120,9 @@ class MockACMEServer:
     def validate_challenge(self, challenge_url: str) -> None:
         """Manually validate a challenge (when ``auto_validate=False``)."""
         for authz in self._authorizations.values():
-            if authz.challenge_url == challenge_url or authz.dns_challenge_url == challenge_url:
+            is_http = not authz.wildcard and authz.challenge_url == challenge_url
+            is_dns = authz.identifier_type == "dns" and authz.dns_challenge_url == challenge_url
+            if is_http or is_dns:
                 authz.challenge_status = "valid"
                 authz.status = "valid"
                 return
@@ -135,6 +148,23 @@ class MockACMEServer:
             if method == "HEAD":
                 return httpx2.Response(200, headers=base_headers)
             return httpx2.Response(204, headers=base_headers)
+
+        is_jws_endpoint = path in {
+            "/new-account",
+            "/new-order",
+            "/revoke-cert",
+            "/key-change",
+        } or path.startswith(("/authz/", "/chall/", "/finalize/", "/order/", "/cert/"))
+        if is_jws_endpoint:
+            try:
+                parse_unverified_jws(
+                    request.content,
+                    payload_mode=(
+                        "empty" if path.startswith(("/authz/", "/order/", "/cert/")) else "object"
+                    ),
+                )
+            except (TypeError, ValueError) as exc:
+                return self._problem_response(base_headers, error="malformed", detail=str(exc))
 
         if path == "/new-account":
             return self._handle_new_account(request, base_headers)
@@ -185,13 +215,19 @@ class MockACMEServer:
     def _handle_new_account(
         self, request: httpx2.Request, headers: dict[str, str]
     ) -> httpx2.Response:
-        body = self._parse_jws_body(request)
-        only_existing = body.get("onlyReturnExisting", False)
+        try:
+            body = self._parse_jws_body(request)
+            only_existing = body.get("onlyReturnExisting", False)
 
-        # Look for existing account by JWK thumbprint from protected header
-        protected = self._parse_jws_protected(request)
-        jwk = protected.get("jwk", {})
-        thumbprint = json.dumps(jwk, sort_keys=True)
+            # Look for existing account by JWK thumbprint from protected header
+            protected = self._parse_jws_protected(request)
+            jwk = protected.get("jwk", {})
+            if not isinstance(jwk, dict):
+                msg = "JWS protected jwk must be an object"
+                raise ValueError(msg)
+            thumbprint = jwk_thumbprint(jwk)
+        except (KeyError, TypeError, ValueError) as exc:
+            return self._problem_response(headers, error="malformed", detail=str(exc))
 
         for acct in self._accounts.values():
             if acct.jwk_thumbprint == thumbprint:
@@ -233,9 +269,20 @@ class MockACMEServer:
     def _handle_new_order(
         self, request: httpx2.Request, headers: dict[str, str]
     ) -> httpx2.Response:
-        body = self._parse_jws_body(request)
-        identifiers = body.get("identifiers", [])
-        domains = [i["value"] for i in identifiers]
+        try:
+            body = self._parse_jws_body(request)
+            if not isinstance(body, dict):
+                msg = "newOrder payload must be an object"
+                raise ValueError(msg)
+            identifiers = normalize_protocol_identifiers(body.get("identifiers"))
+        except UnsupportedIdentifierTypeError as exc:
+            return self._problem_response(
+                headers,
+                error="unsupportedIdentifier",
+                detail=str(exc),
+            )
+        except (TypeError, ValueError) as exc:
+            return self._problem_response(headers, error="malformed", detail=str(exc))
 
         self._order_counter += 1
         order_url = f"{self._base_url}/order/{self._order_counter}"
@@ -243,15 +290,19 @@ class MockACMEServer:
 
         # Create authorizations
         authz_urls = []
-        for domain in domains:
+        for identifier in identifiers:
             self._authz_counter += 1
             authz_url = f"{self._base_url}/authz/{self._authz_counter}"
             chall_url = f"{self._base_url}/chall/{self._authz_counter}"
             token = b64url_encode(secrets.token_bytes(32))
 
+            wildcard = identifier["type"] == "dns" and identifier["value"].startswith("*.")
+            domain = identifier["value"][2:] if wildcard else identifier["value"]
             authz = _MockAuthorization(
                 url=authz_url,
                 domain=domain,
+                identifier_type=identifier["type"],
+                wildcard=wildcard,
                 token=token,
                 challenge_url=chall_url,
                 dns_challenge_url=f"{chall_url}-dns",
@@ -261,7 +312,7 @@ class MockACMEServer:
 
         order = _MockOrder(
             url=order_url,
-            domains=domains,
+            identifiers=identifiers,
             authz_urls=authz_urls,
             finalize_url=finalize_url,
         )
@@ -286,26 +337,16 @@ class MockACMEServer:
         if authz is None:
             return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
+        body: dict[str, Any] = {
+            "status": authz.status,
+            "identifier": {"type": authz.identifier_type, "value": authz.domain},
+            "challenges": self._authorization_challenges(authz),
+        }
+        if authz.wildcard:
+            body["wildcard"] = True
         return httpx2.Response(
             200,
-            json={
-                "status": authz.status,
-                "identifier": {"type": "dns", "value": authz.domain},
-                "challenges": [
-                    {
-                        "type": "http-01",
-                        "url": authz.challenge_url,
-                        "token": authz.token,
-                        "status": authz.challenge_status,
-                    },
-                    {
-                        "type": "dns-01",
-                        "url": authz.challenge_url + "-dns",
-                        "token": authz.token,
-                        "status": authz.challenge_status,
-                    },
-                ],
-            },
+            json=body,
             headers=headers,
         )
 
@@ -316,8 +357,8 @@ class MockACMEServer:
 
         # Find the authorization for this challenge (HTTP-01 or DNS-01)
         for authz in self._authorizations.values():
-            is_http = authz.challenge_url == chall_url
-            is_dns = authz.dns_challenge_url == chall_url
+            is_http = not authz.wildcard and authz.challenge_url == chall_url
+            is_dns = authz.identifier_type == "dns" and authz.dns_challenge_url == chall_url
             if is_http or is_dns:
                 if self._auto_validate:
                     authz.challenge_status = "valid"
@@ -349,23 +390,39 @@ class MockACMEServer:
         if order is None:
             return httpx2.Response(404, json={"type": "not-found"}, headers=headers)
 
-        # Verify all authorizations are valid (mirrors real ACME server behavior)
-        for authz_url in order.authz_urls:
-            authz = self._authorizations.get(authz_url)
-            if authz is None or authz.status != "valid":
-                return httpx2.Response(
-                    403,
-                    json={
-                        "type": "urn:ietf:params:acme:error:orderNotReady",
-                        "detail": "Order is not ready for finalization",
-                    },
-                    headers=headers,
-                )
+        # Verify all authorizations are valid (mirrors real ACME server behavior).
+        if order.status == "pending":
+            all_valid = all(
+                (authz := self._authorizations.get(authz_url)) is not None
+                and authz.status == "valid"
+                for authz_url in order.authz_urls
+            )
+            if all_valid:
+                order.status = "ready"
+        if order.status != "ready":
+            return self._problem_response(
+                headers,
+                error="orderNotReady",
+                detail="Order is not ready for finalization",
+                status=403,
+            )
+
+        try:
+            body = self._parse_jws_body(request)
+            if not isinstance(body, dict):
+                msg = "Finalize payload must be an object"
+                raise ValueError(msg)
+            csr_der, csr_identifiers = decode_and_validate_csr(
+                body.get("csr"),
+                order.identifiers,
+            )
+        except (TypeError, ValueError) as exc:
+            return self._problem_response(headers, error="badCSR", detail=str(exc))
 
         # Generate certificate
         self._cert_counter += 1
         cert_url = f"{self._base_url}/cert/{self._cert_counter}"
-        cert_pem = self._generate_certificate(order.domains)
+        cert_pem = self._generate_certificate(csr_der, csr_identifiers)
         self._certificates[cert_url] = cert_pem
 
         order.status = "valid"
@@ -375,7 +432,7 @@ class MockACMEServer:
             200,
             json={
                 "status": "valid",
-                "identifiers": [{"type": "dns", "value": d} for d in order.domains],
+                "identifiers": order.identifiers,
                 "authorizations": order.authz_urls,
                 "finalize": order.finalize_url,
                 "certificate": cert_url,
@@ -394,16 +451,15 @@ class MockACMEServer:
         # Auto-transition: if all authzs are valid and order is pending → ready
         if order.status == "pending":
             all_valid = all(
-                self._authorizations[aurl].status == "valid"
+                (authz := self._authorizations.get(aurl)) is not None and authz.status == "valid"
                 for aurl in order.authz_urls
-                if aurl in self._authorizations
             )
             if all_valid:
                 order.status = "ready"
 
         body: dict[str, Any] = {
             "status": order.status,
-            "identifiers": [{"type": "dns", "value": d} for d in order.domains],
+            "identifiers": order.identifiers,
             "authorizations": order.authz_urls,
             "finalize": order.finalize_url,
         }
@@ -439,58 +495,64 @@ class MockACMEServer:
         return b64url_encode(f"nonce-{self._nonce_counter}".encode())
 
     @staticmethod
+    def _problem_response(
+        headers: dict[str, str],
+        *,
+        error: str,
+        detail: str,
+        status: int = 400,
+    ) -> httpx2.Response:
+        return httpx2.Response(
+            status,
+            json={
+                "type": f"urn:ietf:params:acme:error:{error}",
+                "detail": detail,
+            },
+            headers={**headers, "Content-Type": "application/problem+json"},
+        )
+
+    @staticmethod
     def _parse_jws_body(request: httpx2.Request) -> dict[str, Any]:
         """Extract the payload from a JWS POST body."""
-        data = json.loads(request.content)
-        payload_b64 = data.get("payload", "")
-        if not payload_b64:
-            return {}
-        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
-        decoded = base64.urlsafe_b64decode(padded)
-        if not decoded:
-            return {}
-        return json.loads(decoded)  # type: ignore[no-any-return]
+        return parse_unverified_jws(request.content)[1]
 
     @staticmethod
     def _parse_jws_protected(request: httpx2.Request) -> dict[str, Any]:
         """Extract the protected header from a JWS POST body."""
-        data = json.loads(request.content)
-        protected_b64 = data.get("protected", "")
-        padded = protected_b64 + "=" * (-len(protected_b64) % 4)
-        decoded = base64.urlsafe_b64decode(padded)
-        return json.loads(decoded)  # type: ignore[no-any-return]
+        return parse_unverified_jws(request.content)[0]
 
     @staticmethod
-    def _generate_certificate(domains: list[str]) -> str:
-        """Generate a self-signed PEM certificate for testing."""
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.asymmetric import ec
-        from cryptography.hazmat.primitives.serialization import Encoding
-        from cryptography.x509 import (
-            CertificateBuilder,
-            DNSName,
-            Name,
-            NameAttribute,
-            SubjectAlternativeName,
-            random_serial_number,
-        )
-        from cryptography.x509.oid import NameOID
+    def _authorization_challenges(authz: _MockAuthorization) -> list[dict[str, str]]:
+        """Return only challenge types valid for the authorization identifier."""
+        challenges = []
+        if not authz.wildcard:
+            challenges.append(
+                {
+                    "type": "http-01",
+                    "url": authz.challenge_url,
+                    "token": authz.token,
+                    "status": authz.challenge_status,
+                }
+            )
+        if authz.identifier_type == "dns":
+            challenges.append(
+                {
+                    "type": "dns-01",
+                    "url": authz.dns_challenge_url,
+                    "token": authz.token,
+                    "status": authz.challenge_status,
+                }
+            )
+        return challenges
 
-        key = ec.generate_private_key(ec.SECP256R1())
-        now = datetime.datetime.now(datetime.UTC)
-        subject = Name([NameAttribute(NameOID.COMMON_NAME, domains[0])])
-        sans = [DNSName(d) for d in domains]
-
-        cert = (
-            CertificateBuilder()
-            .subject_name(subject)
-            .issuer_name(subject)
-            .public_key(key.public_key())
-            .serial_number(random_serial_number())
-            .not_valid_before(now)
-            .not_valid_after(now + datetime.timedelta(days=90))
-            .add_extension(SubjectAlternativeName(sans), critical=False)
-            .sign(key, hashes.SHA256())
-        )
-
-        return cert.public_bytes(Encoding.PEM).decode("ascii")
+    def _generate_certificate(
+        self,
+        csr_der: bytes,
+        identifiers: list[IdentifierValue],
+    ) -> str:
+        """Issue a leaf plus reusable mock root using the submitted CSR key."""
+        return self._ca.issue_from_csr(
+            csr_der,
+            validated_identifiers=identifiers,
+            validity_days=90,
+        ).fullchain_pem.decode("ascii")

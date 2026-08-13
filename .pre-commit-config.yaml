@@ -10,7 +10,7 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
-        additional_dependencies: ["httpx2>=2,<3", "cryptography>=43"]
+        additional_dependencies: ["httpx2>=2,<3", "cryptography>=43", "idna>=3,<4"]
         args: [--config-file=pyproject.toml]
         pass_filenames: false
-        entry: mypy lacme/
+        entry: mypy lacme/ typing_tests/

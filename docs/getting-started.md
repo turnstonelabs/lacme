@@ -13,7 +13,8 @@ This guide walks you through issuing your first certificate with lacme, starting
 pip install lacme
 ```
 
-This installs lacme and its two runtime dependencies: HTTPX2 and cryptography.
+This installs lacme and its three runtime dependencies: HTTPX2, cryptography,
+and idna.
 
 ## Your First Certificate (Private CA)
 
@@ -152,6 +153,11 @@ asyncio.run(main())
 ```
 
 Private keys are written with `0o600` permissions. All writes are atomic (write to temp file, fsync, then rename).
+Most ordinary DNS names keep the readable directory shown above. IPv6,
+wildcard, long, reserved-prefix, and other values that cannot safely use a
+portable filesystem component are stored under a deterministic
+`lacme-v2-<sha256>` directory; their original value remains in `meta.json` and
+is used by all `FileStore` APIs.
 
 ## Auto-Renewal
 

@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+
+- `Client.create_order()`, `Client.issue()`, and their `SyncClient` counterparts
+  now accept typed `IPv4Address` and `IPv6Address` values and carry RFC 8738
+  `ip` identifiers through order creation, CSR generation, responders, testing
+  helpers, certificate SANs, and stable string-facing result metadata. Typed IP
+  identifiers are excluded from registered-domain rate-limit tracking and
+  rejected with `dns-01`, which RFC 8738 does not permit for IP validation.
+  Renewal also recovers identifier types from the stored certificate SANs.
+
+### Fixed
+
+- Order creation now rejects empty, malformed, non-canonical, unsupported, and
+  scoped-IP identifiers before state is created. DNS names are validated in
+  certificate-form ASCII, compared case-insensitively without changing their
+  presentation, and wildcard authorizations use the RFC 8555 base-name form
+  with DNS-01 only. Finalization strictly decodes and binds the CSR's exact
+  typed identifier set to the order, and clients reject downloaded leaf
+  certificates whose SAN set or public key does not match the request.
+- `MockACMEServer` now returns a verifiable leaf-plus-root chain from one
+  reusable per-server CA, and `SyncClient.issue()` adapts synchronous handlers
+  supplied through `challenge_map` as it does the default handler.
+- Renewal fails closed when stored certificate identity data cannot be parsed or
+  reconciled with metadata. `FileStore` uses deterministic portable directory
+  components for IPv6, wildcard, and other filesystem-unsafe primary values
+  and validates metadata ownership before loading or deleting a certificate.
+  Earlier raw directories whose names now require encoding are not discovered
+  automatically; they must be moved, or removed before reissuance. Unexpected
+  metadata-bearing layouts fail closed during certificate listing.
+
 ## 1.1.1
 
 ### Fixed

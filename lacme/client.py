@@ -17,7 +17,17 @@ from typing import TYPE_CHECKING, Any
 import httpx2
 
 from lacme import crypto
+from lacme._identifiers import (
+    certificate_identifier_values,
+    identifier_key_from_protocol,
+    identifier_key_from_value,
+    identifier_key_set,
+    normalize_identifier_values,
+    protocol_identifier_from_value,
+    validate_dns_identifier,
+)
 from lacme.errors import (
+    ACMEError,
     ACMETimeoutError,
     ACMEValidationError,
     BadNonceError,
@@ -37,13 +47,13 @@ from lacme.models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from types import TracebackType
 
     from cryptography.hazmat.primitives.asymmetric import ec
 
-    from lacme._types import CertBundle
-    from lacme.challenges import ChallengeHandler
+    from lacme._types import CertBundle, IdentifierValue
+    from lacme.challenges import ChallengeHandler, ChallengeMap
     from lacme.events import EventDispatcher
     from lacme.ratelimit import RateLimitStatus, RateLimitTracker
     from lacme.store import Store
@@ -57,6 +67,12 @@ _DEFAULT_POLL_TIMEOUT: float = 300.0
 _DEFAULT_POLL_INTERVAL: float = 2.0
 _MAX_BAD_NONCE_RETRIES = 1
 _VALID_REVOCATION_REASONS = set(RevocationReason)
+
+
+def _identifier_from_value(value: IdentifierValue) -> Identifier:
+    """Build the ACME protocol identifier for a public API value."""
+    identifier_type, identifier_value = protocol_identifier_from_value(value)
+    return Identifier(type=IdentifierType(identifier_type), value=identifier_value)
 
 
 def _parse_retry_after(value: str) -> float | None:
@@ -485,21 +501,23 @@ class Client:
 
     async def create_order(
         self,
-        domains: str | list[str],
+        domains: IdentifierValue | Sequence[IdentifierValue],
         *,
         not_before: str | None = None,
         not_after: str | None = None,
     ) -> Order:
-        """Create a new certificate order."""
+        """Create a new certificate order for DNS names and/or typed IP addresses.
+
+        Plain strings are DNS identifiers. Pass an
+        :class:`ipaddress.IPv4Address` or :class:`ipaddress.IPv6Address` to
+        request an RFC 8738 IP identifier.
+        """
+        identifier_values = normalize_identifier_values(domains)
         if self._account_url is None:
             msg = "No account URL — call create_account() first"
             raise RuntimeError(msg)
-        if isinstance(domains, str):
-            domains = [domains]
         d = await self.directory()
-        identifiers = [
-            Identifier(type=IdentifierType.DNS, value=domain).to_dict() for domain in domains
-        ]
+        identifiers = [_identifier_from_value(value).to_dict() for value in identifier_values]
         payload: dict[str, Any] = {"identifiers": identifiers}
         if not_before:
             payload["notBefore"] = not_before
@@ -786,22 +804,25 @@ class Client:
 
     async def issue(
         self,
-        domains: str | list[str],
+        domains: IdentifierValue | Sequence[IdentifierValue],
         *,
         challenge_type: str = "http-01",
-        challenge_map: dict[str, tuple[str, ChallengeHandler]] | None = None,
+        challenge_map: ChallengeMap | None = None,
     ) -> CertBundle:
-        """Issue a certificate for the given domain(s).
+        """Issue a certificate for DNS names and/or typed IP addresses.
 
         Orchestrates: account → order → authorize → finalize → download.
 
         Args:
-            domains: Domain name(s) to include in the certificate.
-            challenge_type: Default challenge type for all domains.
-            challenge_map: Per-domain overrides mapping
-                ``{domain: (challenge_type, handler)}``.  Domains not in
-                the map fall back to *challenge_type* and the client's
-                default ``challenge_handler``.
+            domains: DNS name(s) and/or typed IPv4/IPv6 address objects to
+                include in the certificate. Plain strings are always treated
+                as DNS identifiers.
+            challenge_type: Default challenge type for all identifiers.
+            challenge_map: Per-identifier overrides mapping
+                ``{identifier: (challenge_type, handler)}``. Use the same
+                typed IP address object used in *domains* for an IP override.
+                Identifiers not in the map fall back to *challenge_type* and
+                the client's default ``challenge_handler``.
         """
         import datetime
 
@@ -810,32 +831,55 @@ class Client:
 
         from lacme._types import CertBundle as _CertBundle
 
-        if isinstance(domains, str):
-            domains = [domains]
+        identifier_values = normalize_identifier_values(domains)
+        identifiers = [_identifier_from_value(value) for value in identifier_values]
+        identifier_strings = [identifier.value for identifier in identifiers]
 
-        # Build effective per-domain (challenge_type, handler) map
-        effective: dict[str, tuple[str, ChallengeHandler]] = {}
-        for d in domains:
-            if challenge_map and d in challenge_map:
-                effective[d] = challenge_map[d]
+        # Build effective per-identifier (challenge_type, handler) map. Public
+        # Callback arguments remain strings for compatibility. Typed challenge
+        # map keys distinguish DNS "192.0.2.1" from IPv4Address("192.0.2.1").
+        challenge_overrides = (
+            {
+                identifier_key_from_value(value): override
+                for value, override in challenge_map.items()
+            }
+            if challenge_map is not None
+            else {}
+        )
+        effective: dict[tuple[str, str], tuple[str, str, ChallengeHandler]] = {}
+        for input_value, identifier in zip(identifier_values, identifiers, strict=True):
+            value = identifier.value
+            key = identifier_key_from_value(input_value)
+            if key in challenge_overrides:
+                ct, handler = challenge_overrides[key]
             elif self._challenge_handler is not None:
-                effective[d] = (challenge_type, self._challenge_handler)
+                ct, handler = challenge_type, self._challenge_handler
             else:
-                msg = f"No challenge handler for domain {d!r}"
+                msg = f"No challenge handler for identifier {value!r}"
+                raise ValueError(msg)
+            effective[key] = (value, ct, handler)
+
+        # Identifier/challenge compatibility checks.
+        for input_value, identifier in zip(identifier_values, identifiers, strict=True):
+            value = identifier.value
+            _, ct, _ = effective[identifier_key_from_value(input_value)]
+            if identifier.type == IdentifierType.DNS and value.startswith("*.") and ct == "http-01":
+                msg = f"Wildcard domain {value!r} requires dns-01, not http-01"
+                raise ValueError(msg)
+            if identifier.type == IdentifierType.IP and ct == "dns-01":
+                msg = f"IP address {value!r} cannot use dns-01"
                 raise ValueError(msg)
 
-        # Wildcard check
-        for d in domains:
-            ct, _ = effective[d]
-            if d.startswith("*.") and ct == "http-01":
-                msg = f"Wildcard domain {d!r} requires dns-01, not http-01"
-                raise ValueError(msg)
+        # Registered-domain limits do not apply to RFC 8738 IP identifiers.
+        rate_limit_domains = [
+            identifier.value for identifier in identifiers if identifier.type == IdentifierType.DNS
+        ]
 
         # 0. Rate limit check
         if self._rate_limit_tracker is not None:
             from lacme.errors import RateLimitPreventedError
 
-            rl_status = self._rate_limit_tracker.check(domains)
+            rl_status = self._rate_limit_tracker.check(rate_limit_domains)
             if not rl_status.allowed:
                 msg = f"Rate limit would be exceeded: {'; '.join(rl_status.warnings)}"
                 raise RateLimitPreventedError(msg)
@@ -846,15 +890,33 @@ class Client:
             await self.create_account(contact=self._contact)
 
         # 2. Create order
-        order = await self.create_order(domains)
+        order = await self.create_order(identifier_values)
 
         # 3. Solve challenges
         authzs = await self.get_authorizations(order)
         provisioned: list[tuple[str, str, ChallengeHandler]] = []
+        authorization_routes: dict[str, tuple[str, str, ChallengeHandler]] = {}
         try:
             for authz in authzs:
-                domain_val = authz.identifier.value
-                ct, handler = effective[domain_val]
+                authorization_value = authz.identifier.value
+                if authz.wildcard:
+                    if authz.identifier.type != IdentifierType.DNS:
+                        msg = "Server returned a wildcard authorization for a non-DNS identifier"
+                        raise ValueError(msg)
+                    validate_dns_identifier(authorization_value, allow_wildcard=False)
+                    authorization_value = f"*.{authorization_value}"
+                effective_key = identifier_key_from_protocol(
+                    authz.identifier.type.value,
+                    authorization_value,
+                )
+                if effective_key not in effective:
+                    msg = (
+                        "Server returned an unexpected authorization identifier: "
+                        f"{authz.identifier.type.value}:{authorization_value}"
+                    )
+                    raise ValueError(msg)
+                domain_val, ct, handler = effective[effective_key]
+                authorization_routes[authz.url] = (domain_val, ct, handler)
                 chall = authz.find_challenge(ct)
                 if chall is None:
                     msg = f"No {ct} challenge for {domain_val}"
@@ -875,8 +937,7 @@ class Client:
                     if self._event_dispatcher is not None:
                         from lacme.events import ChallengeFailed
 
-                        domain_val = authz.identifier.value
-                        ct, _ = effective[domain_val]
+                        domain_val, ct, _ = authorization_routes[authz.url]
                         await self._event_dispatcher.emit(
                             ChallengeFailed(
                                 domain=domain_val,
@@ -891,7 +952,7 @@ class Client:
 
             # 6. Generate cert key + CSR, finalize (skip if already processing/valid)
             cert_key = crypto.generate_ec_key()
-            csr_der = crypto.generate_csr(cert_key, domains)
+            csr_der = crypto.generate_csr(cert_key, identifier_values)
             if order.status == OrderStatus.READY:
                 order = await self.finalize_order(order, csr_der)
 
@@ -923,13 +984,35 @@ class Client:
             msg = "Server returned empty certificate chain"
             raise RuntimeError(msg)
         cert_obj = certs[0]
+        try:
+            certificate_identifiers = certificate_identifier_values(cert_obj)
+        except (TypeError, ValueError) as exc:
+            msg = f"Server returned a certificate with invalid identifiers: {exc}"
+            raise ACMEError(msg) from exc
+        if identifier_key_set(certificate_identifiers) != identifier_key_set(identifier_values):
+            msg = "Server returned a certificate for a different identifier set"
+            raise ACMEError(msg)
+
+        public_key_format = serialization.PublicFormat.SubjectPublicKeyInfo
+        certificate_public_key = cert_obj.public_key().public_bytes(
+            serialization.Encoding.DER,
+            public_key_format,
+        )
+        local_public_key = cert_key.public_key().public_bytes(
+            serialization.Encoding.DER,
+            public_key_format,
+        )
+        if certificate_public_key != local_public_key:
+            msg = "Server returned a certificate for a different public key"
+            raise ACMEError(msg)
+
         leaf_pem = cert_obj.public_bytes(serialization.Encoding.PEM)
         expires_at = cert_obj.not_valid_after_utc
         now = datetime.datetime.now(datetime.UTC)
 
         bundle = _CertBundle(
-            domain=domains[0],
-            domains=tuple(domains),
+            domain=identifier_strings[0],
+            domains=tuple(identifier_strings),
             cert_pem=leaf_pem,
             fullchain_pem=fullchain_pem,
             key_pem=key_pem,
@@ -943,7 +1026,7 @@ class Client:
 
         # 10. Record issuance for rate limiting
         if self._rate_limit_tracker is not None:
-            self._rate_limit_tracker.record(domains)
+            self._rate_limit_tracker.record(rate_limit_domains)
 
         # 11. Emit event
         if self._event_dispatcher is not None:
@@ -961,9 +1044,13 @@ class Client:
 
     # --- Rate limits ---
 
-    def check_rate_limits(self, domains: str | list[str]) -> RateLimitStatus:
+    def check_rate_limits(
+        self,
+        domains: IdentifierValue | Sequence[IdentifierValue],
+    ) -> RateLimitStatus:
         """Check if issuing for *domains* would exceed rate limits.
 
+        Typed IP identifiers are excluded from registered-domain accounting.
         Requires a ``rate_limit_tracker`` to be set on the client.
 
         Raises:
@@ -972,9 +1059,13 @@ class Client:
         if self._rate_limit_tracker is None:
             msg = "No rate_limit_tracker configured"
             raise ValueError(msg)
-        if isinstance(domains, str):
-            domains = [domains]
-        return self._rate_limit_tracker.check(domains)
+        identifiers = [
+            _identifier_from_value(value) for value in normalize_identifier_values(domains)
+        ]
+        rate_limit_domains = [
+            identifier.value for identifier in identifiers if identifier.type == IdentifierType.DNS
+        ]
+        return self._rate_limit_tracker.check(rate_limit_domains)
 
     # --- Auto-renewal ---
 

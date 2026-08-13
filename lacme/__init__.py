@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from lacme._types import CertBundle
+from lacme._types import CertBundle, IdentifierValue
 from lacme.acme_server import ACMEResponder, ChallengeValidator
 from lacme.ca import CertificateAuthority
-from lacme.challenges import ChallengeHandler
+from lacme.challenges import ChallengeHandler, ChallengeMap
 from lacme.challenges.dns01 import DNS01Handler, DNSProvider
 from lacme.client import LETSENCRYPT_DIRECTORY, LETSENCRYPT_STAGING_DIRECTORY, Client
 from lacme.crypto import generate_ec_key, private_key_from_pem, private_key_to_pem
@@ -43,7 +43,7 @@ from lacme.mtls import client_ssl_context, server_ssl_context
 from lacme.ratelimit import RateLimitTracker
 from lacme.renewal import RenewalManager
 from lacme.store import FileStore, MemoryStore, Store
-from lacme.sync import SyncChallengeHandler, SyncClient
+from lacme.sync import SyncChallengeHandler, SyncChallengeMap, SyncClient
 
 __all__ = [
     "ACMEError",
@@ -66,6 +66,7 @@ __all__ = [
     "Challenge",
     "ChallengeFailed",
     "ChallengeHandler",
+    "ChallengeMap",
     "ChallengeValidator",
     "Client",
     "DNS01Handler",
@@ -74,6 +75,7 @@ __all__ = [
     "EventDispatcher",
     "FileStore",
     "Identifier",
+    "IdentifierValue",
     "LETSENCRYPT_DIRECTORY",
     "LETSENCRYPT_STAGING_DIRECTORY",
     "MemoryStore",
@@ -86,6 +88,7 @@ __all__ = [
     "RevocationReason",
     "Store",
     "SyncChallengeHandler",
+    "SyncChallengeMap",
     "SyncClient",
     "client_ssl_context",
     "generate_ec_key",
@@ -94,4 +97,4 @@ __all__ = [
     "server_ssl_context",
 ]
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"

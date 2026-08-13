@@ -14,6 +14,8 @@ import logging
 import random
 from typing import TYPE_CHECKING, Any
 
+from lacme._identifiers import certificate_bundle_identifier_values
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -124,12 +126,13 @@ class RenewalManager:
                     bundle.domain,
                     bundle.expires_at.isoformat(),
                 )
+                identifier_values = certificate_bundle_identifier_values(bundle)
                 if self._ca is not None:
-                    new_bundle = self._ca.issue(list(bundle.domains))
+                    new_bundle = self._ca.issue(identifier_values)
                 else:
                     assert self._client is not None  # noqa: S101
                     new_bundle = await self._client.issue(
-                        list(bundle.domains),
+                        identifier_values,
                         challenge_type=self._challenge_type,
                     )
                 # Explicitly save to our store (Client/CA may have a different one)

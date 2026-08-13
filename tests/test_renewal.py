@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import ipaddress
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from lacme._identifiers import certificate_bundle_identifier_values
 from lacme.renewal import RenewalManager
 from lacme.store import MemoryStore
 
@@ -113,6 +116,82 @@ class TestCheckAndRenew:
 
         assert len(renewed) == 1
         client.issue.assert_awaited_once_with(list(bundle.domains), challenge_type="http-01")
+
+    @pytest.mark.anyio
+    async def test_check_and_renew_recovers_ip_types_from_certificate(self) -> None:
+        """Persisted string metadata does not turn IP SANs into DNS SANs on renewal."""
+        from lacme.ca import CertificateAuthority
+
+        ca = CertificateAuthority()
+        ca.init()
+        address = ipaddress.IPv6Address("2001:db8::1")
+        bundle = ca.issue(["node.internal", address], validity_hours=1)
+        store = MemoryStore()
+        store.save_cert(bundle)
+
+        client = MagicMock()
+        client.issue = AsyncMock(return_value=bundle)
+        manager = RenewalManager(client=client, store=store, days_before_expiry=30)
+
+        renewed = await manager.check_and_renew()
+
+        assert renewed == [bundle]
+        client.issue.assert_awaited_once_with(
+            ["node.internal", address],
+            challenge_type="http-01",
+        )
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("corruption", ["invalid-pem", "metadata-mismatch"])
+    async def test_check_and_renew_fails_closed_on_untrusted_identity_metadata(
+        self,
+        make_test_bundle: Callable[..., CertBundle],
+        corruption: str,
+    ) -> None:
+        bundle = _expiring_bundle(make_test_bundle, days=10)
+        if corruption == "invalid-pem":
+            bundle = replace(bundle, cert_pem=b"not a certificate")
+        else:
+            bundle = replace(bundle, domains=("different.example",))
+        store = MemoryStore()
+        store.save_cert(bundle)
+        client = MagicMock()
+        client.issue = AsyncMock()
+        manager = RenewalManager(client=client, store=store, days_before_expiry=30)
+
+        renewed = await manager.check_and_renew()
+
+        assert renewed == []
+        client.issue.assert_not_awaited()
+
+    def test_certificate_identity_recovery_respects_reordered_metadata(self) -> None:
+        from lacme.ca import CertificateAuthority
+
+        ca = CertificateAuthority()
+        ca.init()
+        address = ipaddress.IPv4Address("192.0.2.10")
+        bundle = ca.issue(["node.internal", address])
+        reordered = replace(
+            bundle,
+            domain=str(address),
+            domains=(str(address), "node.internal"),
+        )
+
+        assert certificate_bundle_identifier_values(reordered) == [address, "node.internal"]
+
+    def test_certificate_identity_recovery_matches_dns_case_insensitively(self) -> None:
+        from lacme.ca import CertificateAuthority
+
+        ca = CertificateAuthority()
+        ca.init()
+        bundle = ca.issue("example.com")
+        case_variant = replace(
+            bundle,
+            domain="Example.COM",
+            domains=("Example.COM",),
+        )
+
+        assert certificate_bundle_identifier_values(case_variant) == ["example.com"]
 
     @pytest.mark.anyio
     async def test_check_and_renew_skips_fresh(

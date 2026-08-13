@@ -102,7 +102,7 @@ auto-renewal. This is the client half of the mTLS pattern.
 
 Demonstrates the Turnstone Bridge/Node-Service pattern:
 - Connect to CA server via standard Client
-- Issue cert for this node's identity (hostname or IP)
+- Issue cert for this node's DNS hostname
 - Auto-renew with RenewalManager
 - Build mTLS SSL contexts for serving and connecting
 

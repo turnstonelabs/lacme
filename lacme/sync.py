@@ -10,7 +10,7 @@ import asyncio
 import inspect
 import logging
 import threading
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast, runtime_checkable
 
 from lacme.client import LETSENCRYPT_DIRECTORY, Client
 from lacme.models import IdentifierType
@@ -18,13 +18,13 @@ from lacme.models import IdentifierType
 logger = logging.getLogger("lacme.sync")
 
 if TYPE_CHECKING:
-    from collections.abc import Coroutine
+    from collections.abc import Coroutine, Iterable, Sequence
     from types import TracebackType
 
     import httpx2
     from cryptography.hazmat.primitives.asymmetric import ec
 
-    from lacme._types import CertBundle
+    from lacme._types import CertBundle, IdentifierValue
     from lacme.challenges import ChallengeHandler
     from lacme.events import EventDispatcher
     from lacme.models import Account, Authorization, Challenge, Directory, Order
@@ -52,6 +52,21 @@ class SyncChallengeHandler(Protocol):
         ...
 
 
+class SyncChallengeMap(Protocol):
+    """Read-only per-identifier sync/async challenge-handler overrides."""
+
+    def items(
+        self,
+    ) -> Iterable[
+        tuple[
+            IdentifierValue,
+            tuple[str, SyncChallengeHandler | ChallengeHandler],
+        ]
+    ]:
+        """Iterate over identifier challenge overrides."""
+        ...
+
+
 # ---------------------------------------------------------------------------
 # Internal adapter: sync handler -> async handler
 # ---------------------------------------------------------------------------
@@ -75,6 +90,15 @@ class _SyncToAsyncAdapter:
     async def deprovision(self, domain: str, token: str) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._handler.deprovision, domain, token)
+
+
+def _adapt_challenge_handler(
+    handler: SyncChallengeHandler | ChallengeHandler,
+) -> ChallengeHandler:
+    """Return an async handler, wrapping synchronous callbacks as needed."""
+    if inspect.iscoroutinefunction(getattr(handler, "provision", None)):
+        return cast("ChallengeHandler", handler)
+    return _SyncToAsyncAdapter(cast("SyncChallengeHandler", handler))
 
 
 # ---------------------------------------------------------------------------
@@ -225,16 +249,12 @@ class SyncClient:
         challenge_handler: SyncChallengeHandler | ChallengeHandler | None,
         **kwargs: Any,
     ) -> None:
-        # Adapt sync challenge handler to async if needed.
-        # Both ChallengeHandler and SyncChallengeHandler are @runtime_checkable
-        # with the same method names, so isinstance() cannot distinguish them.
-        # Check whether .provision is a coroutine function to detect async handlers.
-        async_handler: ChallengeHandler | None = None
-        if challenge_handler is not None:
-            if inspect.iscoroutinefunction(getattr(challenge_handler, "provision", None)):
-                async_handler = challenge_handler  # type: ignore[assignment]
-            else:
-                async_handler = _SyncToAsyncAdapter(challenge_handler)  # type: ignore[arg-type]
+        # Both handler protocols have the same method names, so runtime
+        # protocol checks cannot distinguish them. Inspect the provision
+        # method and adapt synchronous callbacks to the managed event loop.
+        async_handler = (
+            _adapt_challenge_handler(challenge_handler) if challenge_handler is not None else None
+        )
 
         self._client = Client(
             challenge_handler=async_handler,
@@ -314,12 +334,12 @@ class SyncClient:
 
     def create_order(
         self,
-        domains: str | list[str],
+        domains: IdentifierValue | Sequence[IdentifierValue],
         *,
         not_before: str | None = None,
         not_after: str | None = None,
     ) -> Order:
-        """Create a new certificate order."""
+        """Create a new certificate order for DNS names and/or typed IP addresses."""
         return self._runner.run(
             self._client.create_order(domains, not_before=not_before, not_after=not_after)
         )
@@ -380,20 +400,33 @@ class SyncClient:
 
     def issue(
         self,
-        domains: str | list[str],
+        domains: IdentifierValue | Sequence[IdentifierValue],
         *,
         challenge_type: str = "http-01",
-        challenge_map: dict[str, tuple[str, ChallengeHandler]] | None = None,
+        challenge_map: SyncChallengeMap | None = None,
     ) -> CertBundle:
-        """Issue a certificate for the given domain(s)."""
+        """Issue for DNS names or typed IPs, adapting synchronous mapped handlers."""
+        async_challenge_map: dict[IdentifierValue, tuple[str, ChallengeHandler]] | None = None
+        if challenge_map is not None:
+            async_challenge_map = {
+                identifier: (kind, _adapt_challenge_handler(handler))
+                for identifier, (kind, handler) in challenge_map.items()
+            }
         return self._runner.run(
-            self._client.issue(domains, challenge_type=challenge_type, challenge_map=challenge_map)
+            self._client.issue(
+                domains,
+                challenge_type=challenge_type,
+                challenge_map=async_challenge_map,
+            )
         )
 
     # --- Rate limits ---
 
-    def check_rate_limits(self, domains: str | list[str]) -> RateLimitStatus:
-        """Check if issuing for *domains* would exceed rate limits."""
+    def check_rate_limits(
+        self,
+        domains: IdentifierValue | Sequence[IdentifierValue],
+    ) -> RateLimitStatus:
+        """Check registered-domain limits, excluding typed IP addresses."""
         return self._client.check_rate_limits(domains)
 
     # --- Revocation ---
