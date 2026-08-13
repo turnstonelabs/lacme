@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import ipaddress
 import json
 import warnings
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import httpx2
 import pytest
@@ -19,9 +20,11 @@ from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     CertificateBuilder,
     DNSName,
+    IPAddress,
     Name,
     NameAttribute,
     SubjectAlternativeName,
+    load_pem_x509_certificates,
     random_serial_number,
 )
 from cryptography.x509.oid import NameOID
@@ -121,7 +124,9 @@ def _make_sync_client(
     )
 
 
-def _make_cert_pem(domain: str = "example.com") -> str:
+def _make_cert_pem(
+    domain: str = "example.com",
+) -> tuple[str, ec_mod.EllipticCurvePrivateKey]:
     """Generate a self-signed cert PEM for mock responses."""
     cert_key = ec_mod.generate_private_key(ec_mod.SECP256R1())
     now = datetime.datetime.now(datetime.UTC)
@@ -137,7 +142,7 @@ def _make_cert_pem(domain: str = "example.com") -> str:
         .add_extension(SubjectAlternativeName([DNSName(domain)]), critical=False)
         .sign(cert_key, hashes.SHA256())
     )
-    return cert.public_bytes(Encoding.PEM).decode("ascii")
+    return cert.public_bytes(Encoding.PEM).decode("ascii"), cert_key
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +167,7 @@ class TestContextManager:
 class TestIssue:
     def test_issue_delegates(self, account_key: EllipticCurvePrivateKey) -> None:
         """SyncClient.issue delegates to async Client.issue via the mock transport."""
-        cert_pem = _make_cert_pem()
+        cert_pem, cert_key = _make_cert_pem()
         authz_attempt = 0
         order_attempt = 0
 
@@ -246,11 +251,14 @@ class TestIssue:
 
         sync_handler = MagicMock(spec=SyncChallengeHandler)
 
-        with _make_sync_client(
-            account_key,
-            httpx2.MockTransport(handler),
-            challenge_handler=sync_handler,
-        ) as client:
+        with (
+            patch("lacme.crypto.generate_ec_key", return_value=cert_key),
+            _make_sync_client(
+                account_key,
+                httpx2.MockTransport(handler),
+                challenge_handler=sync_handler,
+            ) as client,
+        ):
             bundle = client.issue("example.com")
 
         assert bundle.domain == "example.com"
@@ -260,6 +268,57 @@ class TestIssue:
 
         sync_handler.provision.assert_called_once()
         sync_handler.deprovision.assert_called_once()
+
+    def test_issue_typed_ipv6_identifier(self, account_key: EllipticCurvePrivateKey) -> None:
+        """SyncClient preserves typed IP identifiers through its async delegate."""
+        from lacme.testing import MockACMEServer
+
+        server = MockACMEServer()
+        sync_handler = MagicMock(spec=SyncChallengeHandler)
+        address = ipaddress.IPv6Address("2001:0db8::1")
+
+        with _make_sync_client(
+            account_key,
+            server.as_transport(),
+            challenge_handler=sync_handler,
+        ) as client:
+            bundle = client.issue(address)
+
+        assert bundle.domain == "2001:db8::1"
+        assert bundle.domains == ("2001:db8::1",)
+        sync_handler.provision.assert_called_once_with("2001:db8::1", ANY, ANY)
+        sync_handler.deprovision.assert_called_once_with("2001:db8::1", ANY)
+        leaf = load_pem_x509_certificates(bundle.fullchain_pem)[0]
+        sans = leaf.extensions.get_extension_for_class(SubjectAlternativeName).value
+        assert sans.get_values_for_type(IPAddress) == [address]
+
+    def test_sync_challenge_map_distinguishes_same_text_dns_and_ip(
+        self,
+        account_key: EllipticCurvePrivateKey,
+    ) -> None:
+        """Map handlers are adapted without collapsing typed identifier keys."""
+        from lacme.testing import MockACMEServer
+
+        server = MockACMEServer()
+        dns_value = "192.0.2.10"
+        ip_value = ipaddress.IPv4Address(dns_value)
+        dns_handler = MagicMock(spec=SyncChallengeHandler)
+        ip_handler = MagicMock(spec=SyncChallengeHandler)
+
+        with _make_sync_client(account_key, server.as_transport()) as client:
+            bundle = client.issue(
+                [dns_value, ip_value],
+                challenge_map={
+                    dns_value: ("dns-01", dns_handler),
+                    ip_value: ("http-01", ip_handler),
+                },
+            )
+
+        assert bundle.domains == (dns_value, dns_value)
+        dns_handler.provision.assert_called_once_with(dns_value, ANY, ANY)
+        dns_handler.deprovision.assert_called_once_with(dns_value, ANY)
+        ip_handler.provision.assert_called_once_with(dns_value, ANY, ANY)
+        ip_handler.deprovision.assert_called_once_with(dns_value, ANY)
 
 
 class TestDirectory:

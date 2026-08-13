@@ -2,16 +2,36 @@
 
 from __future__ import annotations
 
+import ipaddress
+import json
+import sys
+from typing import Any
+from unittest.mock import ANY, AsyncMock, call
+
 import httpx2
 import pytest
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import load_pem_x509_certificates
+from cryptography.x509 import (
+    CertificateSigningRequestBuilder,
+    DNSName,
+    IPAddress,
+    Name,
+    NameAttribute,
+    SubjectAlternativeName,
+    load_pem_x509_certificates,
+)
 from cryptography.x509.oid import NameOID
 
 from lacme.acme_server import ACMEResponder, ChallengeValidator
 from lacme.ca import CertificateAuthority
 from lacme.challenges.http01 import HTTP01Handler
 from lacme.client import Client
+from lacme.crypto import b64url_encode, generate_csr, generate_ec_key
+from lacme.errors import BadCSRError
+from lacme.events import CertificateIssued, EventDispatcher
+from lacme.models import IdentifierType
+from lacme.ratelimit import MemoryRateLimitStore, RateLimitTracker
 from lacme.store import MemoryStore
 
 
@@ -30,6 +50,51 @@ def responder(ca: CertificateAuthority) -> ACMEResponder:
 @pytest.fixture
 def account_key() -> ec.EllipticCurvePrivateKey:
     return ec.generate_private_key(ec.SECP256R1())
+
+
+def _jws_content(payload: Any) -> bytes:
+    return json.dumps(
+        {
+            "protected": b64url_encode(b"{}"),
+            "payload": b64url_encode(json.dumps(payload).encode()),
+            "signature": "",
+        }
+    ).encode()
+
+
+def _post_as_get_content() -> bytes:
+    return json.dumps(
+        {
+            "protected": b64url_encode(b"{}"),
+            "payload": "",
+            "signature": "",
+        }
+    ).encode()
+
+
+def _invalid_json_jws_contents() -> list[tuple[str, bytes]]:
+    payload = {"identifiers": [{"type": "dns", "value": "example.com"}]}
+    envelope = json.loads(_jws_content(payload))
+
+    protected_utf16 = {**envelope, "protected": b64url_encode("{}".encode("utf-16"))}
+    payload_utf16 = {
+        **envelope,
+        "payload": b64url_encode(json.dumps(payload).encode("utf-16")),
+    }
+    payload_nan = {
+        **envelope,
+        "payload": b64url_encode(
+            b'{"identifiers":[{"type":"dns","value":"example.com"}],"invalid":NaN}'
+        ),
+    }
+    outer_nan = json.dumps(envelope)[:-1] + ',"invalid":NaN}'
+    return [
+        ("outer UTF-16", json.dumps(envelope).encode("utf-16")),
+        ("protected UTF-16", json.dumps(protected_utf16).encode()),
+        ("payload UTF-16", json.dumps(payload_utf16).encode()),
+        ("payload NaN", json.dumps(payload_nan).encode()),
+        ("outer NaN", outer_nan.encode()),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -421,14 +486,22 @@ class TestChallengeValidator:
 
 class TestIPIdentifier:
     @pytest.mark.anyio
-    async def test_ip_identifier(
+    async def test_responder_preserves_ip_identifiers_through_order_lifecycle(
         self,
         ca: CertificateAuthority,
         account_key: ec.EllipticCurvePrivateKey,
     ) -> None:
-        """Issue a cert for an IP address using create_order at a lower level."""
+        """Every responder order representation retains RFC 8738 identifier types."""
         from lacme import crypto
 
+        identifier_values = [
+            ipaddress.IPv4Address("192.0.2.10"),
+            ipaddress.IPv6Address("2001:0db8::1"),
+        ]
+        expected = [
+            (IdentifierType.IP, "192.0.2.10"),
+            (IdentifierType.IP, "2001:db8::1"),
+        ]
         responder = ACMEResponder(ca=ca, auto_approve=True)
         transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
 
@@ -442,45 +515,585 @@ class TestIPIdentifier:
                 poll_timeout=5.0,
             ) as client,
         ):
-            # Manually drive the flow using create_order with an IP identifier.
-            # Client.create_order currently uses IdentifierType.DNS for domain strings,
-            # so we use it with a string and rely on the CA to handle it.
             await client.create_account()
-            order = await client.create_order("192.168.1.1")
+            order = await client.create_order(identifier_values)
+            assert [(i.type, i.value) for i in order.identifiers] == expected
 
-            # Authorize
             authzs = await client.get_authorizations(order)
+            assert [(authz.identifier.type, authz.identifier.value) for authz in authzs] == expected
             for authz in authzs:
                 chall = authz.find_challenge("http-01")
                 assert chall is not None
+                assert authz.find_challenge("dns-01") is None
                 await client.respond_to_challenge(chall)
                 await client.poll_authorization(authz.url)
 
-            # Wait for order to be ready
             order = await client._poll_order_ready(order.url)
+            assert [(i.type, i.value) for i in order.identifiers] == expected
 
-            # Finalize with a CSR that includes the IP as a DNS SAN
-            # (The CA's issue_from_csr extracts SANs from the CSR)
             cert_key = crypto.generate_ec_key()
-            csr_der = crypto.generate_csr(cert_key, ["192.168.1.1"])
+            csr_der = crypto.generate_csr(cert_key, identifier_values)
             order = await client.finalize_order(order, csr_der)
-
-            if order.status != "valid":
-                order = await client.poll_order(order.url)
-
+            assert [(i.type, i.value) for i in order.identifiers] == expected
             assert order.certificate is not None
             fullchain_pem_str = await client.download_certificate(order.certificate)
-
-        # Parse the issued cert and verify the SAN contains the IP value.
-        # The CSR used a DNS SAN for "192.168.1.1" (since generate_csr treats
-        # plain strings as DNS names), so the CA extracts it as a DNSName.
-        from cryptography.x509 import DNSName, SubjectAlternativeName
 
         certs = load_pem_x509_certificates(fullchain_pem_str.encode("ascii"))
         leaf = certs[0]
         san_ext = leaf.extensions.get_extension_for_class(SubjectAlternativeName)
-        dns_names = san_ext.value.get_values_for_type(DNSName)
-        assert "192.168.1.1" in dns_names
+        assert san_ext.value.get_values_for_type(IPAddress) == identifier_values
+
+    @pytest.mark.anyio
+    async def test_client_issue_mixed_dns_and_ip_identifiers(
+        self,
+        ca: CertificateAuthority,
+        account_key: ec.EllipticCurvePrivateKey,
+    ) -> None:
+        """High-level issuance keeps typed internals and string-facing public metadata."""
+        handler = AsyncMock()
+        handler.provision = AsyncMock()
+        handler.deprovision = AsyncMock()
+        store = MemoryStore()
+        dispatcher = EventDispatcher()
+        issued_events: list[CertificateIssued] = []
+        dispatcher.subscribe(issued_events.append, event_type=CertificateIssued)
+        registered_domain_calls: list[str] = []
+
+        def registered_domain(value: str) -> str:
+            registered_domain_calls.append(value)
+            return value
+
+        tracker = RateLimitTracker(
+            MemoryRateLimitStore(),
+            registered_domain_func=registered_domain,
+        )
+        responder = ACMEResponder(ca=ca, auto_approve=True)
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        identifier_values = [ipaddress.IPv4Address("192.0.2.10"), "node.internal"]
+
+        async with (
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=handler,
+                store=store,
+                event_dispatcher=dispatcher,
+                rate_limit_tracker=tracker,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            bundle = await client.issue(identifier_values)
+
+        assert bundle.domain == "192.0.2.10"
+        assert bundle.domains == ("192.0.2.10", "node.internal")
+        assert store.load_cert("192.0.2.10") == bundle
+        assert [(event.domain, event.domains) for event in issued_events] == [
+            ("192.0.2.10", ("192.0.2.10", "node.internal"))
+        ]
+        handler.provision.assert_has_awaits(
+            [
+                call("192.0.2.10", ANY, ANY),
+                call("node.internal", ANY, ANY),
+            ]
+        )
+        handler.deprovision.assert_has_awaits(
+            [
+                call("192.0.2.10", ANY),
+                call("node.internal", ANY),
+            ]
+        )
+        assert registered_domain_calls == ["node.internal", "node.internal"]
+
+        leaf = load_pem_x509_certificates(bundle.fullchain_pem)[0]
+        sans = leaf.extensions.get_extension_for_class(SubjectAlternativeName).value
+        assert sans.get_values_for_type(IPAddress) == [ipaddress.IPv4Address("192.0.2.10")]
+        assert sans.get_values_for_type(DNSName) == ["node.internal"]
+
+
+class TestProtocolIdentifierValidation:
+    @pytest.mark.anyio
+    @pytest.mark.skipif(
+        sys.version_info[:2] != (3, 11),
+        reason="This compact input reaches the recursion limit on CPython 3.11 only",
+    )
+    async def test_deep_json_returns_malformed_without_state(
+        self,
+        responder: ACMEResponder,
+    ) -> None:
+        envelope = json.loads(
+            _jws_content({"identifiers": [{"type": "dns", "value": "example.com"}]})
+        )
+        nested_extension = "[" * 1100 + "0" + "]" * 1100
+        content = (json.dumps(envelope)[:-1] + f',"extension":{nested_extension}}}').encode()
+        assert len(content) < responder._MAX_BODY_SIZE
+
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-order", content=content)
+
+        assert response.status_code == 400
+        assert response.json()["type"].endswith(":malformed")
+        assert responder._orders == {}
+        assert responder._authorizations == {}
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(("case", "content"), _invalid_json_jws_contents())
+    async def test_new_order_rejects_non_utf8_or_nonstandard_json_without_state(
+        self,
+        responder: ACMEResponder,
+        case: str,
+        content: bytes,
+    ) -> None:
+        del case
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-order", content=content)
+
+        assert response.status_code == 400
+        assert response.json()["type"].endswith(":malformed")
+        assert responder._orders == {}
+        assert responder._authorizations == {}
+
+    @pytest.mark.anyio
+    async def test_new_account_rejects_literal_empty_payload_without_state(
+        self,
+        responder: ACMEResponder,
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-account", content=_post_as_get_content())
+
+        assert response.status_code == 400
+        assert response.json()["type"].endswith(":malformed")
+        assert responder._accounts == {}
+
+    @pytest.mark.anyio
+    async def test_challenge_rejects_literal_empty_payload_before_validation(
+        self,
+        responder: ACMEResponder,
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            created = await http.post(
+                "/new-order",
+                content=_jws_content({"identifiers": [{"type": "dns", "value": "example.com"}]}),
+            )
+            authorization = responder._authorizations[created.json()["authorizations"][0]]
+
+            rejected = await http.post(
+                authorization.challenge_url,
+                content=_post_as_get_content(),
+            )
+
+            assert rejected.status_code == 400
+            assert rejected.json()["type"].endswith(":malformed")
+            assert authorization.status == "pending"
+            assert authorization.challenge_status == "pending"
+
+            acknowledged = await http.post(
+                authorization.challenge_url,
+                content=_jws_content({}),
+            )
+
+        assert acknowledged.status_code == 200
+        assert authorization.status == "valid"
+        assert authorization.challenge_status == "valid"
+
+    @pytest.mark.anyio
+    async def test_new_account_rejects_missing_jwk_without_state(
+        self,
+        responder: ACMEResponder,
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-account", content=_jws_content({}))
+
+        assert response.status_code == 400
+        assert response.json()["type"].endswith(":malformed")
+        assert responder._accounts == {}
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        ("payload", "error"),
+        [
+            ({}, "malformed"),
+            ({"identifiers": []}, "malformed"),
+            ({"identifiers": [{}]}, "malformed"),
+            ({"identifiers": [{"type": "dns", "value": 42}]}, "malformed"),
+            ({"identifiers": [{"type": "dns", "value": "bad..example"}]}, "malformed"),
+            ({"identifiers": [{"type": "dns", "value": "xn--"}]}, "malformed"),
+            ({"identifiers": [{"type": "dns", "value": "foo.*.example"}]}, "malformed"),
+            ({"identifiers": [{"type": "ip", "value": "fe80::1%eth0"}]}, "malformed"),
+            (
+                {"identifiers": [{"type": "email", "value": "admin@example.com"}]},
+                "unsupportedIdentifier",
+            ),
+        ],
+    )
+    async def test_new_order_rejects_invalid_identifiers_without_state(
+        self,
+        responder: ACMEResponder,
+        payload: Any,
+        error: str,
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-order", content=_jws_content(payload))
+
+        assert response.status_code == 400
+        assert response.headers["content-type"] == "application/problem+json"
+        assert response.json()["type"] == f"urn:ietf:params:acme:error:{error}"
+        assert responder._orders == {}
+        assert responder._authorizations == {}
+
+    @pytest.mark.anyio
+    async def test_finalize_binds_typed_set_and_accepts_reordering(
+        self,
+        responder: ACMEResponder,
+        account_key: ec.EllipticCurvePrivateKey,
+    ) -> None:
+        handler = AsyncMock()
+        ip_value = ipaddress.IPv4Address("198.51.100.8")
+        ordered_values = ["192.0.2.44", ip_value]
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+
+        async with (
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=handler,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            await client.create_account()
+            order = await client.create_order(ordered_values)
+            for authorization in await client.get_authorizations(order):
+                challenge = authorization.find_challenge("http-01")
+                assert challenge is not None
+                await client.respond_to_challenge(challenge)
+                await client.poll_authorization(authorization.url)
+            order = await client._poll_order_ready(order.url)
+
+            wrong_type_csr = generate_csr(
+                generate_ec_key(),
+                [ipaddress.IPv4Address("192.0.2.44"), ip_value],
+            )
+            with pytest.raises(BadCSRError):
+                await client.finalize_order(order, wrong_type_csr)
+
+            retained = await client._poll_order_ready(order.url)
+            assert retained.status == "ready"
+
+            padded_csr = _jws_content(
+                {"csr": f"{b64url_encode(generate_csr(generate_ec_key(), ordered_values))}="}
+            )
+            padded_response = await http.post(order.finalize, content=padded_csr)
+            assert padded_response.status_code == 400
+            assert padded_response.json()["type"].endswith(":badCSR")
+            retained = await client._poll_order_ready(order.url)
+            assert retained.status == "ready"
+
+            differing_cn_key = generate_ec_key()
+            differing_cn_csr = (
+                CertificateSigningRequestBuilder()
+                .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, "different.example")]))
+                .add_extension(
+                    SubjectAlternativeName(
+                        [DNSName("192.0.2.44"), IPAddress(ip_value)],
+                    ),
+                    critical=False,
+                )
+                .sign(differing_cn_key, hashes.SHA256())
+                .public_bytes(serialization.Encoding.DER)
+            )
+            with pytest.raises(BadCSRError, match="identifiers do not match"):
+                await client.finalize_order(retained, differing_cn_csr)
+
+            retained = await client._poll_order_ready(order.url)
+            assert retained.status == "ready"
+
+            reordered_csr = generate_csr(generate_ec_key(), [ip_value, "192.0.2.44"])
+            finalized = await client.finalize_order(retained, reordered_csr)
+            assert finalized.status == "valid"
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("shape", ["cn-only", "dns-cn-ip-san"])
+    async def test_finalize_accepts_dns_identifiers_from_common_name(
+        self,
+        responder: ACMEResponder,
+        account_key: ec.EllipticCurvePrivateKey,
+        shape: str,
+    ) -> None:
+        dns_value = "cn.example"
+        ip_value = ipaddress.IPv4Address("192.0.2.55")
+        requested = [dns_value] if shape == "cn-only" else [dns_value, ip_value]
+        key = generate_ec_key()
+        builder = CertificateSigningRequestBuilder().subject_name(
+            Name([NameAttribute(NameOID.COMMON_NAME, dns_value)])
+        )
+        if shape == "dns-cn-ip-san":
+            builder = builder.add_extension(
+                SubjectAlternativeName([IPAddress(ip_value)]),
+                critical=False,
+            )
+        csr_der = builder.sign(key, hashes.SHA256()).public_bytes(serialization.Encoding.DER)
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+
+        async with (
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=AsyncMock(),
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            await client.create_account()
+            order = await client.create_order(requested)
+            for authz in await client.get_authorizations(order):
+                challenge = authz.find_challenge("http-01")
+                assert challenge is not None
+                await client.respond_to_challenge(challenge)
+            order = await client._poll_order_ready(order.url)
+            finalized = await client.finalize_order(order, csr_der)
+            assert finalized.certificate is not None
+            chain = await client.download_certificate(finalized.certificate)
+
+        leaf = load_pem_x509_certificates(chain.encode("ascii"))[0]
+        sans = leaf.extensions.get_extension_for_class(SubjectAlternativeName).value
+        assert sans.get_values_for_type(DNSName) == [dns_value]
+        expected_ips = [] if shape == "cn-only" else [ip_value]
+        assert sans.get_values_for_type(IPAddress) == expected_ips
+
+    @pytest.mark.anyio
+    async def test_finalize_uses_order_types_for_same_text_dns_and_ip(
+        self,
+        responder: ACMEResponder,
+        account_key: ec.EllipticCurvePrivateKey,
+    ) -> None:
+        text_value = "192.0.2.77"
+        ip_value = ipaddress.IPv4Address(text_value)
+        key = generate_ec_key()
+        csr = (
+            CertificateSigningRequestBuilder()
+            .subject_name(Name([NameAttribute(NameOID.COMMON_NAME, text_value)]))
+            .add_extension(SubjectAlternativeName([IPAddress(ip_value)]), critical=False)
+            .sign(key, hashes.SHA256())
+            .public_bytes(serialization.Encoding.DER)
+        )
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with (
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=AsyncMock(),
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            await client.create_account()
+            order = await client.create_order([text_value, ip_value])
+            for authz in await client.get_authorizations(order):
+                challenge = authz.find_challenge("http-01")
+                assert challenge is not None
+                await client.respond_to_challenge(challenge)
+            order = await client._poll_order_ready(order.url)
+            finalized = await client.finalize_order(order, csr)
+            chain = await client.download_certificate(finalized.certificate or "")
+
+        sans = (
+            load_pem_x509_certificates(chain.encode("ascii"))[0]
+            .extensions.get_extension_for_class(SubjectAlternativeName)
+            .value
+        )
+        assert sans.get_values_for_type(DNSName) == [text_value]
+        assert sans.get_values_for_type(IPAddress) == [ip_value]
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("field", ["protected", "payload", "signature"])
+    async def test_rejects_noncanonical_outer_jws_before_state_mutation(
+        self,
+        responder: ACMEResponder,
+        field: str,
+    ) -> None:
+        envelope = json.loads(
+            _jws_content({"identifiers": [{"type": "dns", "value": "example.com"}]})
+        )
+        envelope[field] += "="
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-order", json=envelope)
+
+        assert response.status_code == 400
+        assert response.json()["type"].endswith(":malformed")
+        assert responder._orders == {}
+        assert responder._authorizations == {}
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("forbidden_member", ["header", "signatures"])
+    async def test_rejects_forbidden_jws_serialization_members_before_state_mutation(
+        self,
+        responder: ACMEResponder,
+        forbidden_member: str,
+    ) -> None:
+        envelope = json.loads(
+            _jws_content({"identifiers": [{"type": "dns", "value": "example.com"}]})
+        )
+        envelope[forbidden_member] = {} if forbidden_member == "header" else []
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            response = await http.post("/new-order", json=envelope)
+
+        assert response.status_code == 400
+        assert response.json()["type"].endswith(":malformed")
+        assert responder._orders == {}
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("payload", [{}, {"unexpected": True}])
+    async def test_post_as_get_requires_literal_empty_payload_without_transition(
+        self,
+        responder: ACMEResponder,
+        payload: dict[str, Any],
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            created = await http.post(
+                "/new-order",
+                content=_jws_content({"identifiers": [{"type": "dns", "value": "example.com"}]}),
+            )
+            order = created.json()
+            responder._authorizations[order["authorizations"][0]].status = "valid"
+
+            for path in ("/authz/1", "/order/1", "/cert/999"):
+                response = await http.post(path, content=_jws_content(payload))
+                assert response.status_code == 400
+                assert response.json()["type"].endswith(":malformed")
+
+        assert responder._orders[created.headers["location"]].status == "pending"
+
+    @pytest.mark.anyio
+    async def test_order_with_missing_authorization_stays_pending(
+        self,
+        responder: ACMEResponder,
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            created = await http.post(
+                "/new-order",
+                content=_jws_content({"identifiers": [{"type": "dns", "value": "example.com"}]}),
+            )
+            order = created.json()
+            del responder._authorizations[order["authorizations"][0]]
+
+            response = await http.post("/order/1", content=_post_as_get_content())
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "pending"
+
+
+class TestWildcardAuthorization:
+    @pytest.mark.anyio
+    async def test_responder_projects_wildcard_authorization_and_hides_http01(
+        self,
+        responder: ACMEResponder,
+    ) -> None:
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with httpx2.AsyncClient(
+            transport=transport,
+            base_url="https://acme.test",
+        ) as http:
+            order_response = await http.post(
+                "/new-order",
+                content=_jws_content({"identifiers": [{"type": "dns", "value": "*.Example.COM"}]}),
+            )
+            assert order_response.status_code == 201
+            order_data = order_response.json()
+            assert order_data["identifiers"] == [{"type": "dns", "value": "*.Example.COM"}]
+
+            authz_response = await http.post(
+                order_data["authorizations"][0],
+                content=_post_as_get_content(),
+            )
+            authz_data = authz_response.json()
+            assert authz_data["identifier"] == {"type": "dns", "value": "Example.COM"}
+            assert authz_data["wildcard"] is True
+            assert [challenge["type"] for challenge in authz_data["challenges"]] == ["dns-01"]
+
+            hidden_http = await http.post("/chall/1", content=_jws_content({}))
+            assert hidden_http.status_code == 404
+            assert responder._authorizations[order_data["authorizations"][0]].status == "pending"
+
+    @pytest.mark.anyio
+    async def test_client_issues_apex_and_wildcard_using_requested_presentations(
+        self,
+        responder: ACMEResponder,
+        account_key: ec.EllipticCurvePrivateKey,
+    ) -> None:
+        handler = AsyncMock()
+        transport = httpx2.ASGITransport(app=responder)  # type: ignore[arg-type]
+        async with (
+            httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                http_client=http,
+                account_key=account_key,
+                challenge_handler=handler,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            bundle = await client.issue(
+                ["Example.COM", "*.Example.COM"],
+                challenge_type="dns-01",
+            )
+
+        assert bundle.domains == ("Example.COM", "*.Example.COM")
+        handler.provision.assert_has_awaits(
+            [call("Example.COM", ANY, ANY), call("*.Example.COM", ANY, ANY)]
+        )
+        handler.deprovision.assert_has_awaits(
+            [call("Example.COM", ANY), call("*.Example.COM", ANY)]
+        )
 
 
 # ---------------------------------------------------------------------------

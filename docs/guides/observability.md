@@ -97,8 +97,8 @@ Emitted after a certificate is successfully issued via `Client.issue()`.
 
 | Field        | Type                | Description              |
 |--------------|---------------------|--------------------------|
-| `domain`     | `str`               | Primary domain name      |
-| `domains`    | `tuple[str, ...]`   | All domains in the cert  |
+| `domain`     | `str`               | Primary identifier string |
+| `domains`    | `tuple[str, ...]`   | All identifier strings   |
 | `expires_at` | `datetime`          | Certificate expiry       |
 
 ```python
@@ -117,8 +117,8 @@ Emitted after a certificate is successfully renewed by `RenewalManager`.
 
 | Field                  | Type                | Description                     |
 |------------------------|---------------------|---------------------------------|
-| `domain`               | `str`               | Primary domain name             |
-| `domains`              | `tuple[str, ...]`   | All domains in the cert         |
+| `domain`               | `str`               | Primary identifier string       |
+| `domains`              | `tuple[str, ...]`   | All identifier strings          |
 | `expires_at`           | `datetime`          | New certificate expiry          |
 | `previous_expires_at`  | `datetime`          | Previous certificate expiry     |
 
@@ -139,8 +139,8 @@ threshold. This event fires before the renewal attempt.
 
 | Field            | Type                | Description                        |
 |------------------|---------------------|------------------------------------|
-| `domain`         | `str`               | Primary domain name                |
-| `domains`        | `tuple[str, ...]`   | All domains in the cert            |
+| `domain`         | `str`               | Primary identifier string          |
+| `domains`        | `tuple[str, ...]`   | All identifier strings             |
 | `expires_at`     | `datetime`          | Certificate expiry                 |
 | `days_remaining` | `int`               | Days until expiry (may be 0)       |
 
@@ -160,7 +160,7 @@ Emitted when an ACME challenge validation fails during `Client.issue()`.
 
 | Field             | Type   | Description                    |
 |-------------------|--------|--------------------------------|
-| `domain`          | `str`  | Domain that failed validation  |
+| `domain`          | `str`  | Identifier string that failed validation |
 | `challenge_type`  | `str`  | Challenge type (e.g., `http-01`) |
 | `error`           | `str`  | Error message                  |
 
@@ -225,8 +225,8 @@ Emitted when the `CertificateAuthority` signs a new leaf certificate.
 
 | Field        | Type                | Description                     |
 |--------------|---------------------|---------------------------------|
-| `name`       | `str`               | Primary name (CN)               |
-| `names`      | `tuple[str, ...]`   | All names (SANs)                |
+| `name`       | `str`               | Primary identifier string (CN)  |
+| `names`      | `tuple[str, ...]`   | All identifier strings (SANs)   |
 | `is_client`  | `bool`              | True if client cert (clientAuth)|
 | `expires_at` | `datetime`          | Certificate expiry              |
 

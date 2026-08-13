@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock, call, patch
 
 import httpx2
 import pytest
 
 from lacme.client import Client
-from lacme.crypto import b64url_decode, b64url_encode, generate_ec_key
+from lacme.crypto import b64url_decode, b64url_encode, generate_csr, generate_ec_key
 from lacme.errors import (
+    ACMEError,
     ACMEServerError,
     ACMETimeoutError,
     ACMEValidationError,
@@ -20,7 +22,13 @@ from lacme.errors import (
     MalformedError,
     RateLimitedError,
 )
-from lacme.models import AccountStatus, AuthorizationStatus, ChallengeStatus, OrderStatus
+from lacme.models import (
+    AccountStatus,
+    AuthorizationStatus,
+    ChallengeStatus,
+    IdentifierType,
+    OrderStatus,
+)
 from lacme.store import MemoryStore
 
 if TYPE_CHECKING:
@@ -486,6 +494,29 @@ AUTHZ_DATA: dict[str, Any] = {
 
 class TestOrderLifecycle:
     @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        "domains",
+        [[], "", [ipaddress.IPv6Address("fe80::1%eth0")], [object()]],
+    )
+    async def test_create_order_rejects_invalid_identifiers_before_io(
+        self,
+        account_key: EllipticCurvePrivateKey,
+        domains: object,
+    ) -> None:
+        requests: list[httpx2.Request] = []
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            requests.append(request)
+            return httpx2.Response(500)
+
+        client = _make_client(account_key, httpx2.MockTransport(handler))
+        async with client:
+            with pytest.raises((TypeError, ValueError)):
+                await client.create_order(domains)  # type: ignore[arg-type]
+
+        assert requests == []
+
+    @pytest.mark.anyio
     async def test_create_order(self, account_key: EllipticCurvePrivateKey) -> None:
         def handler(request: httpx2.Request) -> httpx2.Response:
             if request.url.path == "/directory":
@@ -510,6 +541,58 @@ class TestOrderLifecycle:
             order = await client.create_order("example.com")
             assert order.status == OrderStatus.PENDING
             assert order.url == "https://acme.test/order/1"
+
+    @pytest.mark.anyio
+    async def test_create_order_preserves_typed_ip_identifiers(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        expected = [
+            {"type": "dns", "value": "192.0.2.10"},
+            {"type": "ip", "value": "192.0.2.10"},
+            {"type": "ip", "value": "2001:db8::1"},
+            {"type": "dns", "value": "node.internal"},
+        ]
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            if request.url.path == "/directory":
+                return _json_response(DIRECTORY_DATA)
+            if request.url.path == "/new-account":
+                return _json_response(
+                    {"status": "valid"},
+                    status=201,
+                    headers={"location": "https://acme.test/acct/1"},
+                )
+            if request.url.path == "/new-order":
+                body = json.loads(b64url_decode(json.loads(request.content)["payload"]))
+                assert body["identifiers"] == expected
+                return _json_response(
+                    {
+                        **ORDER_DATA,
+                        "identifiers": expected,
+                    },
+                    status=201,
+                    headers={"location": "https://acme.test/order/1"},
+                )
+            return httpx2.Response(404)
+
+        client = _make_client(account_key, httpx2.MockTransport(handler))
+        async with client:
+            await client.create_account()
+            order = await client.create_order(
+                [
+                    "192.0.2.10",
+                    ipaddress.IPv4Address("192.0.2.10"),
+                    ipaddress.IPv6Address("2001:0db8::1"),
+                    "node.internal",
+                ]
+            )
+
+        assert [(identifier.type, identifier.value) for identifier in order.identifiers] == [
+            (IdentifierType.DNS, "192.0.2.10"),
+            (IdentifierType.IP, "192.0.2.10"),
+            (IdentifierType.IP, "2001:db8::1"),
+            (IdentifierType.DNS, "node.internal"),
+        ]
 
     @pytest.mark.anyio
     async def test_get_authorizations(self, account_key: EllipticCurvePrivateKey) -> None:
@@ -827,6 +910,27 @@ class TestWildcard:
             with pytest.raises(ValueError, match="Wildcard.*requires dns-01"):
                 await client.issue("*.example.com", challenge_type="http-01")
 
+    @pytest.mark.anyio
+    async def test_ip_identifier_with_dns01_raises(
+        self, account_key: EllipticCurvePrivateKey
+    ) -> None:
+        handler_mock = AsyncMock()
+        handler_mock.provision = AsyncMock()
+        handler_mock.deprovision = AsyncMock()
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(lambda r: httpx2.Response(404)))
+        client = Client(
+            directory_url="https://acme.test/directory",
+            account_key=account_key,
+            http_client=http,
+            challenge_handler=handler_mock,
+        )
+
+        async with client:
+            with pytest.raises(ValueError, match="IP address.*cannot use dns-01"):
+                await client.issue(ipaddress.IPv4Address("192.0.2.10"), challenge_type="dns-01")
+
+        await http.aclose()
+
 
 # ---------------------------------------------------------------------------
 # Full issue flow
@@ -968,8 +1072,9 @@ class TestIssueFlow:
             poll_interval=0.01,
         )
 
-        async with client:
-            bundle = await client.issue("example.com")
+        with patch("lacme.crypto.generate_ec_key", return_value=cert_key):
+            async with client:
+                bundle = await client.issue("example.com")
 
         assert bundle.domain == "example.com"
         assert bundle.domains == ("example.com",)
@@ -983,6 +1088,113 @@ class TestIssueFlow:
         # Verify stored in MemoryStore
         stored = store.load_cert("example.com")
         assert stored is not None
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        ("tamper", "message"),
+        [
+            ("identifiers", "different identifier set"),
+            ("public-key", "different public key"),
+        ],
+    )
+    async def test_rejects_misissued_certificate_without_success_side_effects(
+        self,
+        account_key: EllipticCurvePrivateKey,
+        tamper: str,
+        message: str,
+    ) -> None:
+        import datetime
+
+        from lacme.events import CertificateIssued, EventDispatcher
+        from lacme.ratelimit import MemoryRateLimitStore, RateLimitTracker
+        from lacme.testing import MockACMEServer
+
+        class TamperingServer(MockACMEServer):
+            def _generate_certificate(self, csr_der: bytes, identifiers: list[Any]) -> str:
+                if tamper == "identifiers":
+                    tampered_csr = generate_csr(generate_ec_key(), ["wrong.example"])
+                    identifiers = ["wrong.example"]
+                else:
+                    tampered_csr = generate_csr(generate_ec_key(), ["ordered.example"])
+                return super()._generate_certificate(tampered_csr, identifiers)
+
+        server = TamperingServer()
+        store = MemoryStore()
+        rate_store = MemoryRateLimitStore()
+        tracker = RateLimitTracker(rate_store)
+        dispatcher = EventDispatcher()
+        issued_events: list[CertificateIssued] = []
+        dispatcher.subscribe(issued_events.append, event_type=CertificateIssued)
+        handler = AsyncMock()
+
+        async with (
+            httpx2.AsyncClient(transport=server.as_transport()) as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                account_key=account_key,
+                http_client=http,
+                store=store,
+                challenge_handler=handler,
+                rate_limit_tracker=tracker,
+                event_dispatcher=dispatcher,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            with pytest.raises(ACMEError, match=message):
+                await client.issue("ordered.example")
+
+        since = datetime.datetime.now(datetime.UTC) - datetime.timedelta(weeks=1)
+        assert store.list_certs() == []
+        assert rate_store.get_issuances("ordered.example", since) == []
+        assert issued_events == []
+        handler.deprovision.assert_awaited_once()
+
+    @pytest.mark.anyio
+    async def test_routes_case_normalized_apex_and_wildcard_authorizations(
+        self,
+        account_key: EllipticCurvePrivateKey,
+    ) -> None:
+        from lacme.testing import MockACMEServer
+
+        class LowercaseAuthorizationServer(MockACMEServer):
+            def _handle_authz(
+                self,
+                request: httpx2.Request,
+                path: str,
+                headers: dict[str, str],
+            ) -> httpx2.Response:
+                response = super()._handle_authz(request, path, headers)
+                body = response.json()
+                body["identifier"]["value"] = body["identifier"]["value"].lower()
+                return httpx2.Response(
+                    response.status_code,
+                    json=body,
+                    headers=dict(response.headers),
+                )
+
+        server = LowercaseAuthorizationServer()
+        handler = AsyncMock()
+        async with (
+            httpx2.AsyncClient(transport=server.as_transport()) as http,
+            Client(  # noqa: SIM117
+                directory_url="https://acme.test/directory",
+                account_key=account_key,
+                http_client=http,
+                challenge_handler=handler,
+                poll_interval=0.01,
+                poll_timeout=5.0,
+            ) as client,
+        ):
+            bundle = await client.issue(
+                ["Example.COM", "*.Example.COM"],
+                challenge_type="dns-01",
+            )
+
+        assert bundle.domains == ("Example.COM", "*.Example.COM")
+        handler.provision.assert_has_awaits(
+            [call("Example.COM", ANY, ANY), call("*.Example.COM", ANY, ANY)]
+        )
 
 
 # ---------------------------------------------------------------------------

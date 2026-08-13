@@ -41,6 +41,10 @@ class TestRegisteredDomain:
     def test_known_sld(self) -> None:
         assert _default_registered_domain("foo.co.uk") == "foo.co.uk"
 
+    def test_registered_domain_is_case_insensitive(self) -> None:
+        assert _default_registered_domain("API.Example.COM") == "example.com"
+        assert _default_registered_domain("API.FOO.CO.UK") == "foo.co.uk"
+
     def test_deep_subdomain_with_sld(self) -> None:
         assert _default_registered_domain("api.foo.co.uk") == "foo.co.uk"
 
@@ -191,6 +195,15 @@ class TestRateLimitTracker:
         now = datetime.datetime.now(datetime.UTC)
         results = store.get_issuances("example.com", since=now - datetime.timedelta(hours=1))
         assert len(results) == 1
+
+    def test_case_variants_share_one_rate_limit_bucket(self) -> None:
+        tracker = RateLimitTracker(store=MemoryRateLimitStore(), limit=1)
+        tracker.record(["API.Example.COM"])
+
+        status = tracker.check(["api.example.com"])
+
+        assert status.allowed is False
+        assert status.counts == {"example.com": 1}
 
     def test_from_file_store(self, tmp_path: Path) -> None:
         from lacme.store import FileStore

@@ -3,10 +3,23 @@
 from __future__ import annotations
 
 import datetime
+import ipaddress
 import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509 import (
+    CertificateBuilder,
+    DNSName,
+    Name,
+    NameAttribute,
+    SubjectAlternativeName,
+    random_serial_number,
+)
+from cryptography.x509.oid import NameOID
 
 from lacme.cli import main
 
@@ -39,7 +52,20 @@ def _mock_bundle(
     bundle.domains = (domain,)
     bundle.expires_at = expires_at or (now + datetime.timedelta(days=90))
     bundle.issued_at = now
-    bundle.cert_pem = b"---CERT---"
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = Name([NameAttribute(NameOID.COMMON_NAME, domain)])
+    certificate = (
+        CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(key.public_key())
+        .serial_number(random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(bundle.expires_at)
+        .add_extension(SubjectAlternativeName([DNSName(domain)]), critical=False)
+        .sign(key, hashes.SHA256())
+    )
+    bundle.cert_pem = certificate.public_bytes(Encoding.PEM)
     bundle.key_pem = b"---KEY---"
     bundle.fullchain_pem = b"---FULLCHAIN---"
     bundle.cert_path = f"/tmp/certs/{domain}/cert.pem"
@@ -217,6 +243,36 @@ class TestRenew:
         captured = capsys.readouterr()
         assert "Renewed" in captured.out
 
+    @patch("lacme.sync.SyncClient")
+    @patch("lacme.store.FileStore")
+    def test_renew_preserves_ip_identifier_types(
+        self,
+        mock_store_cls: MagicMock,
+        mock_client_cls: MagicMock,
+    ) -> None:
+        from lacme.ca import CertificateAuthority
+
+        address = ipaddress.IPv4Address("192.0.2.10")
+        ca = CertificateAuthority()
+        ca.init()
+        expiring = ca.issue([address, "node.internal"], validity_hours=1)
+        mock_store = MagicMock()
+        mock_store.list_certs.return_value = [expiring]
+        mock_store_cls.return_value = mock_store
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+        mock_client.issue.return_value = expiring
+        mock_client_cls.return_value = mock_client
+
+        result = main(["--store", "/tmp/test", "renew"])
+
+        assert result == 0
+        mock_client.issue.assert_called_once_with(
+            [address, "node.internal"],
+            challenge_type="http-01",
+        )
+
     @patch("lacme.store.FileStore")
     def test_renew_no_expiring(
         self, mock_store_cls: MagicMock, capsys: pytest.CaptureFixture[str]
@@ -295,7 +351,10 @@ class TestRevoke:
         mock_client_cls.return_value = mock_client
 
         main(["--store", "/tmp/test", "revoke", "example.com", "--reason", "1"])
-        mock_client.revoke.assert_called_once_with(b"---CERT---", reason=1)
+        mock_client.revoke.assert_called_once_with(
+            mock_store.load_cert.return_value.cert_pem,
+            reason=1,
+        )
 
 
 # ---------------------------------------------------------------------------

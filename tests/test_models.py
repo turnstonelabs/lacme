@@ -313,6 +313,16 @@ class TestAuthorization:
         )
         assert authz.wildcard is True
 
+    def test_authorization_rejects_literal_wildcard_identifier(self) -> None:
+        with pytest.raises(ValueError, match="not allowed"):
+            Authorization.from_dict(
+                {
+                    "identifier": {"type": "dns", "value": "*.example.com"},
+                    "status": "pending",
+                    "challenges": [],
+                }
+            )
+
 
 # ---------------------------------------------------------------------------
 # Account

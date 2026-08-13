@@ -14,10 +14,11 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from fastapi import APIRouter
 
+    from lacme._types import IdentifierValue
     from lacme.challenges.http01 import HTTP01Handler
     from lacme.client import Client
 
@@ -74,7 +75,7 @@ def get_client_dependency(client: Client) -> Callable[[], Any]:
 
 async def lifespan_issue(
     client: Client,
-    domains: str | list[str],
+    domains: IdentifierValue | Sequence[IdentifierValue],
     *,
     challenge_type: str = "http-01",
 ) -> None:

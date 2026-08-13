@@ -9,11 +9,12 @@ Modern, async-native Python ACME client library for embedding TLS certificate au
 
 ## What is lacme?
 
-lacme fills the gap between full-featured CLI tools like certbot (not designed for embedding) and low-level ACME protocol libraries that leave orchestration to you. It provides a high-level `Client.issue()` one-liner alongside full access to every step of the ACME workflow. lacme has just two runtime dependencies -- HTTPX2 and cryptography -- and supports Python 3.11+.
+lacme fills the gap between full-featured CLI tools like certbot (not designed for embedding) and low-level ACME protocol libraries that leave orchestration to you. It provides a high-level `Client.issue()` one-liner alongside full access to every step of the ACME workflow. lacme has three runtime dependencies -- HTTPX2, cryptography, and idna -- and supports Python 3.11+.
 
 ## Features
 
 - **Async-native with sync wrapper** -- `Client` for asyncio, `SyncClient` for blocking code
+- **DNS and IP identifiers** -- IPv4 and IPv6 SANs through the high-level ACME issuance APIs
 - **HTTP-01 and DNS-01 challenges** -- built-in handlers with pluggable DNS providers (Cloudflare, Route 53, shell hooks)
 - **Built-in Certificate Authority** -- `CertificateAuthority` for issuing private CA certs, ideal for mTLS
 - **ACME Responder** -- `ACMEResponder` ASGI app backed by the built-in CA for internal PKI

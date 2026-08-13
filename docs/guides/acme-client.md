@@ -222,7 +222,7 @@ on success:
 
 ## Certificate Issuance
 
-### Single Domain
+### Single Identifier
 
 ```python
 bundle = await client.issue("example.com")
@@ -232,7 +232,7 @@ The `issue()` method orchestrates the full ACME flow:
 
 1. Ensure an account exists (create if needed)
 2. Create an order
-3. Solve challenges for each domain
+3. Solve challenges for each identifier
 4. Finalize with a CSR
 5. Download the certificate chain
 
@@ -240,10 +240,10 @@ The returned `CertBundle` contains:
 
 | Field             | Type                | Description                    |
 |-------------------|---------------------|--------------------------------|
-| `domain`          | `str`               | Primary domain                 |
-| `domains`         | `tuple[str, ...]`   | All domains in the certificate |
+| `domain`          | `str`               | Primary identifier string      |
+| `domains`         | `tuple[str, ...]`   | All identifier strings         |
 | `cert_pem`        | `bytes`             | Leaf certificate (PEM)         |
-| `fullchain_pem`   | `bytes`             | Full chain (leaf + intermediates) |
+| `fullchain_pem`   | `bytes`             | Leaf followed by the CA-provided chain |
 | `key_pem`         | `bytes`             | Private key (PEM)              |
 | `issued_at`       | `datetime`          | Issuance timestamp             |
 | `expires_at`      | `datetime`          | Expiry timestamp               |
@@ -251,9 +251,10 @@ The returned `CertBundle` contains:
 | `fullchain_path`  | `Path | None`       | File path (if using FileStore) |
 | `key_path`        | `Path | None`       | File path (if using FileStore) |
 
-### Multi-Domain (SAN) Certificates
+### Multiple-Identifier (SAN) Certificates
 
-Pass a list of domains. The first domain becomes the Common Name (CN):
+Pass a list of identifiers. The first identifier's string value becomes the
+Common Name (CN):
 
 ```python
 bundle = await client.issue([
@@ -262,6 +263,46 @@ bundle = await client.issue([
     "api.example.com",
 ])
 ```
+
+### IP Address Certificates
+
+Pass typed values from Python's `ipaddress` module to request IPv4 or IPv6
+identifiers. lacme serializes them as RFC 8738 `ip` identifiers and emits
+`IPAddress` entries in the certificate SAN extension:
+
+```python
+from ipaddress import ip_address
+
+bundle = await client.issue(ip_address("192.0.2.10"))
+
+mixed_bundle = await client.issue([
+    "node.internal",
+    ip_address("192.0.2.10"),
+    ip_address("2001:db8::1"),
+])
+```
+
+This contract is the same for `Client.create_order()`, `Client.issue()`, and
+their `SyncClient` counterparts. Plain strings are always DNS identifiers, so
+`"192.0.2.10"` deliberately requests a DNS SAN while
+`ip_address("192.0.2.10")` requests an IP SAN.
+
+DNS identifiers must use certificate-form ASCII. Supply internationalized
+names as valid IDNA A-labels (for example, `xn--...`), not Unicode U-labels.
+Letter case is preserved in callbacks and result metadata but ignored when
+matching authorizations, CSRs, and certificates.
+
+IPv6 scope identifiers such as `fe80::1%eth0` are interface-local notation,
+not certificate identities, and are rejected. When using `challenge_map`, use
+the same typed IP object as the map key; this also lets a numeric DNS name and
+an IP address with identical text select different handlers.
+
+Challenge-handler callbacks, `CertBundle.domain`, `CertBundle.domains`, stored
+certificate keys, and lifecycle events use unchanged DNS strings and canonical
+IP strings. `RenewalManager` recovers the identifier types from the stored
+certificate's SAN extension when it reissues the certificate.
+IP identifiers can use `http-01`, but RFC 8738 forbids `dns-01` validation for
+them; lacme rejects that combination before creating an order.
 
 ### Wildcard Certificates
 
@@ -355,8 +396,8 @@ handler = DNS01Handler(
 ## Mixed Challenge Types
 
 Use the `challenge_map` parameter to assign different challenge types and
-handlers per domain. This is useful when some domains need DNS-01 (e.g.,
-wildcards) while others can use HTTP-01:
+handlers per identifier. This is useful when some DNS identifiers need DNS-01
+(e.g., wildcards) while others can use HTTP-01:
 
 ```python
 from lacme.challenges.http01 import HTTP01Handler
@@ -372,7 +413,7 @@ dns_handler = DNS01Handler(provider=dns_provider)
 
 async with Client(
     store=store,
-    challenge_handler=http_handler,  # default for domains not in map
+    challenge_handler=http_handler,  # default for identifiers not in map
     contact="mailto:admin@example.com",
 ) as client:
     bundle = await client.issue(
@@ -385,7 +426,7 @@ async with Client(
     )
 ```
 
-Domains not present in `challenge_map` use the default `challenge_type` and
+Identifiers not present in `challenge_map` use the default `challenge_type` and
 the client's `challenge_handler`.
 
 ## Certificate Revocation
@@ -668,6 +709,9 @@ When `block=True` (the default), `issue()` raises `RateLimitPreventedError`
 if the limit would be exceeded. The check happens before any network requests
 are made.
 
+Typed IP identifiers are excluded from this registered-domain accounting. In a
+mixed DNS/IP order, only the DNS identifiers are checked and recorded.
+
 !!! tip
     For accurate registered domain extraction with complex TLDs (e.g.,
     `foo.co.uk`), pass a custom `registered_domain_func` using a library
@@ -710,6 +754,21 @@ Directory layout:
             key.pem      (private key, 0o600)
             meta.json    (0o644)
 ```
+
+Most DNS names retain the readable directory layout above. Values that are not
+valid directory components on every supported platform, exceed 200 UTF-8
+bytes, or begin with the reserved `lacme-v2-` prefix use a deterministic
+`lacme-v2-<sha256>` directory instead. This includes IPv6 addresses and
+wildcard names. `meta.json`, `load_cert()`, `list_certs()`, and every public
+bundle field continue to expose the original string. Earlier raw directories
+whose names now require encoding are not discovered automatically. Move them
+to the encoded path, or remove the raw directory before reissuing.
+`list_certs()` rejects unexpected metadata-bearing directories rather than
+silently accepting an ambiguous layout.
+
+The store key remains the primary identifier's string value. Consequently, a
+numeric DNS identifier and a typed IP identifier with the same text select the
+same stored-certificate slot; the most recent save wins.
 
 ### MemoryStore
 

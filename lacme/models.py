@@ -134,6 +134,11 @@ class Identifier:
     type: IdentifierType  # noqa: A003
     value: str
 
+    def __post_init__(self) -> None:
+        from lacme._identifiers import normalize_protocol_identifier
+
+        normalize_protocol_identifier(self.type.value, self.value)
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
         return cls(type=IdentifierType(data["type"]), value=data["value"])
@@ -213,6 +218,18 @@ class Authorization:
     challenges: tuple[Challenge, ...] = ()
     wildcard: bool = False
     url: str = ""
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.wildcard, bool):
+            msg = "Authorization wildcard must be a boolean"
+            raise ValueError(msg)
+        if self.identifier.type == IdentifierType.DNS:
+            from lacme._identifiers import validate_dns_identifier
+
+            validate_dns_identifier(self.identifier.value, allow_wildcard=False)
+        if self.wildcard and self.identifier.type != IdentifierType.DNS:
+            msg = "Wildcard authorization identifiers must use the dns type"
+            raise ValueError(msg)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any], *, url: str = "") -> Self:

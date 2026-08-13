@@ -114,6 +114,8 @@ def _default_registered_domain(domain: str) -> str:
     ``www.example.com`` → ``example.com``,
     ``foo.co.uk`` → ``foo.co.uk``.
     """
+    domain = domain.lower()
+
     # Strip leading wildcard prefix and trailing dot
     if domain.startswith("*."):
         domain = domain[2:]
@@ -337,7 +339,7 @@ class RateLimitTracker:
         ``allowed=False`` if any domain would exceed the limit.
         """
         since = datetime.datetime.now(datetime.UTC) - self._window
-        registered = {self._registered_domain_func(d) for d in domains}
+        registered = {self._registered_domain_func(d).lower() for d in domains}
 
         counts: dict[str, int] = {}
         warnings: list[str] = []
@@ -375,7 +377,7 @@ class RateLimitTracker:
     def record(self, domains: list[str]) -> None:
         """Record an issuance for the given *domains*."""
         now = datetime.datetime.now(datetime.UTC)
-        registered = {self._registered_domain_func(d) for d in domains}
+        registered = {self._registered_domain_func(d).lower() for d in domains}
 
         for rd in sorted(registered):
             self._store.record_issuance(

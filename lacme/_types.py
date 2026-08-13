@@ -7,13 +7,18 @@ and ASGI type aliases.
 
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Awaitable, Callable, MutableMapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, TypeAlias
 
 if TYPE_CHECKING:
     import datetime
     from pathlib import Path
+
+
+IdentifierValue: TypeAlias = str | ipaddress.IPv4Address | ipaddress.IPv6Address
+"""DNS name or typed IPv4/IPv6 address accepted by certificate APIs."""
 
 
 # ---------------------------------------------------------------------------

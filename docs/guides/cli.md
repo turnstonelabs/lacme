@@ -354,7 +354,7 @@ issuing a certificate:
     certs/
         example.com/
             cert.pem             # Leaf certificate (0o644)
-            fullchain.pem        # Full chain (leaf + intermediates) (0o644)
+            fullchain.pem        # Leaf followed by CA-provided chain (0o644)
             key.pem              # Certificate private key (0o600)
             meta.json            # Metadata (domain, dates) (0o644)
         api.example.com/
@@ -368,3 +368,8 @@ issuing a certificate:
 Private keys (`account.key`, `key.pem`) are written with 0o600 permissions.
 All writes are atomic (temp file + `os.replace`) with `fsync` to ensure data
 integrity.
+
+Most ordinary DNS names use readable certificate directory names. IPv6,
+wildcard, long, reserved-prefix, and other encoded values use a deterministic
+`lacme-v2-<sha256>` directory; `meta.json` and CLI output retain the original
+identifier string.

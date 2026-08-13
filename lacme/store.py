@@ -7,6 +7,7 @@ Provides a :class:`Store` protocol and two implementations:
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import os
 import tempfile
@@ -20,10 +21,25 @@ from cryptography.hazmat.primitives.serialization import (
     load_pem_private_key,
 )
 
+from lacme.errors import ACMEStoreError
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from lacme._types import CertBundle
+    from lacme._types import CertBundle, CertMeta
+
+_CERT_DIR_PREFIX = "lacme-v2-"
+_WINDOWS_INVALID_CHARS = frozenset('<>:"/\\|?*')
+_WINDOWS_RESERVED_NAMES = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{i}" for i in range(1, 10)),
+        *(f"LPT{i}" for i in range(1, 10)),
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +81,7 @@ class FileStore:
         {base}/
             account.key          (PEM, 0o600)
             certs/
-                {domain}/
+                {portable-certificate-key}/
                     cert.pem     (leaf, 0o644)
                     fullchain.pem (0o644)
                     key.pem      (private key, 0o600)
@@ -83,19 +99,68 @@ class FileStore:
         """The resolved base directory path."""
         return self._base
 
+    @staticmethod
+    def _validate_domain_key(domain: str) -> None:
+        """Validate the public string key before mapping it to a directory."""
+        if not isinstance(domain, str) or not domain:
+            msg = "Certificate key must be a non-empty string"
+            raise ValueError(msg)
+        if domain in {".", ".."}:
+            msg = f"Invalid certificate key (dot component): {domain!r}"
+            raise ValueError(msg)
+        if "/" in domain or "\\" in domain:
+            msg = f"Invalid certificate key (path separator): {domain!r}"
+            raise ValueError(msg)
+
+    @staticmethod
+    def _is_portable_domain_component(domain: str) -> bool:
+        """Return whether *domain* is a safe cross-platform certificate key."""
+        first_segment = domain.split(".", 1)[0].rstrip(" .").upper()
+        utf16_units = len(domain.encode("utf-16-le")) // 2
+        return (
+            domain not in {".", ".."}
+            and not any(ord(char) < 32 or char in _WINDOWS_INVALID_CHARS for char in domain)
+            and not domain.endswith((" ", "."))
+            and first_segment not in _WINDOWS_RESERVED_NAMES
+            and utf16_units <= 255
+        )
+
+    @staticmethod
+    def _domain_component(domain: str) -> str:
+        """Map a public key to a deterministic cross-platform path component."""
+        FileStore._validate_domain_key(domain)
+        is_portable = (
+            not domain.startswith(_CERT_DIR_PREFIX)
+            and FileStore._is_portable_domain_component(domain)
+            and len(domain.encode("utf-8")) <= 200
+        )
+        if is_portable:
+            return domain
+        digest = hashlib.sha256(domain.encode("utf-8")).hexdigest()
+        return f"{_CERT_DIR_PREFIX}{digest}"
+
+    def _resolve_certs_dir(self) -> Path:
+        """Return the lexical certificate root, rejecting path aliases."""
+        certs_dir = self._certs_dir
+        if certs_dir.is_symlink() or certs_dir.resolve() != certs_dir:
+            msg = f"Certificate store root must not be a symbolic link: {certs_dir}"
+            raise ACMEStoreError(msg)
+        return certs_dir
+
     def _resolve_domain_dir(self, domain: str) -> Path:
-        """Resolve a domain directory path, rejecting invalid names and traversal."""
+        """Resolve the portable directory for a public certificate key."""
         from pathlib import Path as _Path
 
-        if not domain:
-            msg = "Domain name must be non-empty"
-            raise ValueError(msg)
-        if any(sep in domain for sep in (os.sep, os.altsep) if sep):
-            msg = f"Invalid domain name (path separator): {domain!r}"
-            raise ValueError(msg)
-        domain_dir = _Path(self._certs_dir / domain).resolve()
-        if not domain_dir.is_relative_to(self._certs_dir.resolve()):
-            msg = f"Invalid domain name (path traversal): {domain!r}"
+        component = self._domain_component(domain)
+        certs_dir = self._resolve_certs_dir()
+        domain_path = _Path(certs_dir / component)
+        domain_dir = domain_path.resolve()
+        if (
+            domain_dir != domain_path
+            or domain_dir == certs_dir
+            or not domain_dir.is_relative_to(certs_dir)
+        ):
+            msg = f"Invalid certificate key (path traversal): {domain!r}"
             raise ValueError(msg)
         return domain_dir
 
@@ -165,6 +230,15 @@ class FileStore:
         key_path = domain_dir / "key.pem"
         meta_path = domain_dir / "meta.json"
 
+        if meta_path.exists():
+            existing = self._read_cert_meta(meta_path)
+            if existing.domain != bundle.domain:
+                msg = (
+                    f"Certificate directory collision: {domain_dir} belongs to "
+                    f"{existing.domain!r}, not {bundle.domain!r}"
+                )
+                raise ACMEStoreError(msg)
+
         _atomic_write(cert_path, bundle.cert_pem, mode=0o644)
         _atomic_write(fullchain_path, bundle.fullchain_pem, mode=0o644)
         _atomic_write(key_path, bundle.key_pem, mode=0o600)
@@ -191,17 +265,61 @@ class FileStore:
         )
 
     def load_cert(self, domain: str) -> CertBundle | None:
-        import datetime
+        domain_dir = self._resolve_domain_dir(domain)
+        if not (domain_dir / "meta.json").exists():
+            return None
+        return self._load_cert_from_dir(domain_dir, expected_domain=domain)
 
-        from lacme._types import CertBundle as _CertBundle
-        from lacme._types import CertMeta as _CertMeta
+    def list_certs(self) -> list[CertBundle]:
+        certs_dir = self._resolve_certs_dir()
+        if not certs_dir.exists():
+            return []
+        certs: list[CertBundle] = []
+        for domain_dir in sorted(certs_dir.iterdir()):
+            if domain_dir.is_symlink():
+                msg = f"Unexpected certificate directory (symbolic link): {domain_dir}"
+                raise ACMEStoreError(msg)
+            if domain_dir.is_dir() and (domain_dir / "meta.json").exists():
+                meta = self._read_cert_meta(domain_dir / "meta.json")
+                expected_dir = self._resolve_domain_dir(meta.domain)
+                if domain_dir != expected_dir:
+                    msg = (
+                        f"Certificate metadata for {meta.domain!r} is stored in an "
+                        f"unexpected directory: {domain_dir}"
+                    )
+                    raise ACMEStoreError(msg)
+                certs.append(self._load_cert_from_dir(domain_dir, expected_domain=meta.domain))
+        return sorted(certs, key=lambda cert: cert.domain)
+
+    def delete_cert(self, domain: str) -> bool:
+        import shutil
 
         domain_dir = self._resolve_domain_dir(domain)
         meta_path = domain_dir / "meta.json"
-        if not meta_path.exists():
-            return None
+        if not domain_dir.exists() or not meta_path.exists():
+            return False
+        meta = self._read_cert_meta(meta_path)
+        if meta.domain != domain:
+            msg = f"Certificate directory {domain_dir} belongs to {meta.domain!r}"
+            raise ACMEStoreError(msg)
+        shutil.rmtree(domain_dir)
+        return True
 
-        meta = _CertMeta.from_dict(json.loads(meta_path.read_text()))
+    @staticmethod
+    def _read_cert_meta(path: Path) -> CertMeta:
+        from lacme._types import CertMeta as _CertMeta
+
+        return _CertMeta.from_dict(json.loads(path.read_text()))
+
+    def _load_cert_from_dir(self, domain_dir: Path, *, expected_domain: str) -> CertBundle:
+        import datetime
+
+        from lacme._types import CertBundle as _CertBundle
+
+        meta = self._read_cert_meta(domain_dir / "meta.json")
+        if meta.domain != expected_domain:
+            msg = f"Certificate directory {domain_dir} belongs to {meta.domain!r}"
+            raise ACMEStoreError(msg)
         return _CertBundle(
             domain=meta.domain,
             domains=meta.domains,
@@ -214,26 +332,6 @@ class FileStore:
             fullchain_path=domain_dir / "fullchain.pem",
             key_path=domain_dir / "key.pem",
         )
-
-    def list_certs(self) -> list[CertBundle]:
-        if not self._certs_dir.exists():
-            return []
-        results: list[CertBundle] = []
-        for domain_dir in sorted(self._certs_dir.iterdir()):
-            if domain_dir.is_dir() and (domain_dir / "meta.json").exists():
-                bundle = self.load_cert(domain_dir.name)
-                if bundle is not None:
-                    results.append(bundle)
-        return results
-
-    def delete_cert(self, domain: str) -> bool:
-        import shutil
-
-        domain_dir = self._resolve_domain_dir(domain)
-        if not domain_dir.exists() or not (domain_dir / "meta.json").exists():
-            return False
-        shutil.rmtree(domain_dir)
-        return True
 
 
 # ---------------------------------------------------------------------------

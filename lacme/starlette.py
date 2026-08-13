@@ -11,11 +11,14 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from starlette.applications import Starlette
     from starlette.requests import Request
     from starlette.responses import Response
     from starlette.routing import Route
 
+    from lacme._types import IdentifierValue
     from lacme.challenges.http01 import HTTP01Handler
     from lacme.client import Client
 
@@ -57,7 +60,7 @@ def acme_challenge_route(handler: HTTP01Handler) -> Route:
 
 async def on_startup_issue(
     client: Client,
-    domains: str | list[str],
+    domains: IdentifierValue | Sequence[IdentifierValue],
     *,
     challenge_type: str = "http-01",
 ) -> None:
