@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1625,6 +1625,13 @@ Mount in your web framework (Starlette, FastAPI, etc.) at a path prefix.</p>
         <p>ASGI application implementing ACME protocol endpoints.</p>
 <p>Delegates certificate signing to a :class:<code>~lacme.ca.CertificateAuthority</code>.
 Mount in your web framework at a path prefix.</p>
+<p>When the responder is reached through NAT or a reverse proxy, pass the
+canonical externally reachable responder URL via <code>external_url</code>.  The URL
+must include the mount prefix and is used for every URL advertised through
+the ACME protocol.  Supply it as an ASCII HTTP(S) URI, using punycode for
+internationalized hostnames and percent-encoded UTF-8 bytes for non-ASCII
+paths; credentials, query strings, fragments, and ambiguous path segments
+are not accepted.</p>
 <p>.. warning::</p>
 <div class="highlight"><pre><span></span><code>This responder does **not** validate JWS signatures or nonces.
 It is intended for trusted internal networks where the transport
@@ -1634,9 +1641,13 @@ expose to untrusted clients without additional auth middleware.
 <p>Usage::</p>
 <div class="highlight"><pre><span></span><code>ca = CertificateAuthority(store=store)
 ca.init()
-responder = ACMEResponder(ca=ca, auto_approve=True)
+responder = ACMEResponder(
+    ca=ca,
+    auto_approve=True,
+    external_url=&quot;https://ca.example/acme&quot;,
+)
 # Mount at /acme in your ASGI app
-# Clients use: directory_url=&quot;https://host/acme/directory&quot;
+# Clients use: directory_url=&quot;https://ca.example/acme/directory&quot;
 </code></pre></div>
 
 
@@ -1830,7 +1841,7 @@ responder = ACMEResponder(ca=ca, auto_approve=True)
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "content.code.annotate", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

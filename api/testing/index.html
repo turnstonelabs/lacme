@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1550,7 +1550,7 @@
 
         <p>Test utilities for lacme.</p>
 <p>Provides :class:<code>MockACMEServer</code>, an in-process ACME server backed by
-:class:<code>httpx.MockTransport</code> for integration testing.</p>
+:class:<code>httpx2.MockTransport</code> for integration testing.</p>
 
 
 
@@ -1595,13 +1595,15 @@ test scenarios.</p>
 <p>Usage::</p>
 <div class="highlight"><pre><span></span><code>server = MockACMEServer()
 transport = server.as_transport()
-http = httpx.AsyncClient(transport=transport, base_url=&quot;https://acme.test&quot;)
-async with Client(
-    directory_url=&quot;https://acme.test/directory&quot;,
-    http_client=http,
-    account_key=key,
-    challenge_handler=handler,
-) as client:
+async with (
+    httpx2.AsyncClient(transport=transport, base_url=&quot;https://acme.test&quot;) as http,
+    Client(
+        directory_url=&quot;https://acme.test/directory&quot;,
+        http_client=http,
+        account_key=key,
+        challenge_handler=handler,
+    ) as client,
+):
     bundle = await client.issue([&quot;example.com&quot;])
 </code></pre></div>
 
@@ -1634,12 +1636,12 @@ async with Client(
 
 
 <a href="#lacme.testing.MockACMEServer.as_transport" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">as_transport</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">MockTransport</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">as_transport</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">httpx2</span><span class="o">.</span><span class="n">MockTransport</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Return an :class:<code>httpx.MockTransport</code> wrapping this server.</p>
+        <p>Return an :class:<code>httpx2.MockTransport</code> wrapping this server.</p>
 
 
     </div>
@@ -1740,7 +1742,7 @@ async with Client(
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "content.code.annotate", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

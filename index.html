@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1533,7 +1533,7 @@
 <p>lacme is a modern, async-native Python library for automating TLS certificate management using the ACME protocol (RFC 8555). It is designed to be embedded directly into Python applications -- no subprocess calls, no sidecar daemons, just import and issue.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <p><strong>Async-native with sync wrapper.</strong>
-The core <code>Client</code> is fully async, built on httpx. For blocking code or scripts, <code>SyncClient</code> wraps every method with a managed event loop so you can call <code>client.issue()</code> without touching asyncio.</p>
+The core <code>Client</code> is fully async, built on HTTPX2. For blocking code or scripts, <code>SyncClient</code> wraps every method with a managed event loop so you can call <code>client.issue()</code> without touching asyncio.</p>
 <p><strong>HTTP-01 and DNS-01 challenges.</strong>
 <code>HTTP01Handler</code> serves challenge responses over a built-in TCP server or via ASGI middleware. <code>DNS01Handler</code> delegates record creation to pluggable providers -- Cloudflare, Route 53, and shell-hook providers are included out of the box.</p>
 <p><strong>Built-in Certificate Authority.</strong>
@@ -1551,7 +1551,7 @@ The <code>lacme</code> command provides <code>issue</code>, <code>renew</code>, 
 <p><strong>Event system and Prometheus metrics.</strong>
 <code>EventDispatcher</code> emits typed events for certificate issued, renewed, expiring, challenge failed, and rate limit warnings. <code>MetricsCollector</code> subscribes to the dispatcher and updates Prometheus counters and gauges automatically.</p>
 <p><strong>MockACMEServer for testing.</strong>
-An in-process mock ACME server backed by <code>httpx.MockTransport</code>. Implements the full issue flow so you can integration-test your certificate automation without network access or a real CA.</p>
+An in-process mock ACME server backed by <code>httpx2.MockTransport</code>. Implements the full issue flow so you can integration-test your certificate automation without network access or a real CA.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">pip</label><label for="__tabbed_1_2">uv</label></div>
 <div class="tabbed-content">
@@ -1677,7 +1677,7 @@ An in-process mock ACME server backed by <code>httpx.MockTransport</code>. Imple
       <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["content.code.copy", "content.code.annotate", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "toc.follow"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
