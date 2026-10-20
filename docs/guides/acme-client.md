@@ -101,6 +101,15 @@ system's trust store. `ca_bundle` selects an explicit CA bundle, while
 `client_cert` and `client_key` configure a client identity for mTLS. When a
 client is injected, configure its TLS policy directly on that client.
 
+lacme adds no roots of its own. A client it creates trusts the operating
+system's store, or the bundle or directory that `SSL_CERT_FILE` or
+`SSL_CERT_DIR` names when either is set, or only `ca_bundle` when one is given.
+When a root is distrusted after a CA compromise, update that store or bundle,
+then restart long-running processes, since a client can keep the roots it
+loaded when it was created; no lacme release is needed. The Route 53 provider
+trusts certifi instead (see
+[Route 53 certificate trust](dns-providers.md#certificate-trust)).
+
 ## Account Management
 
 ### Creating an Account

@@ -115,6 +115,16 @@ Route 53 uses `boto3`, which reads credentials from the standard chain:
 2. Shared credentials file (`~/.aws/credentials`)
 3. IAM role (if running on EC2/ECS/Lambda)
 
+### Certificate Trust
+
+`boto3` verifies AWS endpoints with botocore, which trusts only the bundle that
+`AWS_CA_BUNDLE`, the `ca_bundle` setting in the AWS config file, or
+`REQUESTS_CA_BUNDLE` names, in that order; with none set, it trusts certifi's
+bundle (botocore's own when certifi is absent). It does not fall back to the
+operating system's store. The `aws` extra requires certifi 2026.10.19 or later,
+which drops emSign ECC Root CA - G3; keep certifi current, or remove the root
+from a bundle you name, and restart long-running processes after either change.
+
 ### Usage
 
 ```python

@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.2.1
+
+### Security
+
+- The `aws` extra now requires `certifi>=2026.10.19`. The private keys of
+  several eMudhra intermediate CAs can be recovered by anyone (certifi advisory
+  GHSA-6q48-6c7w-9gw2), so a client that trusts their root, emSign ECC Root
+  CA - G3, accepts a forged certificate for any host. The Route 53 provider
+  connects through botocore, which trusts the bundle that `AWS_CA_BUNDLE`, the
+  AWS config file's `ca_bundle`, or `REQUESTS_CA_BUNDLE` names, and otherwise
+  certifi's bundle; it does not fall back to the operating system's store.
+  certifi 2026.10.19 drops that root. Upgrade with `pip install -U "lacme[aws]"`
+  or upgrade certifi itself (a plain `pip install -U lacme` does not apply the
+  extra's new floor), or remove the root from a bundle you name, then restart
+  long-running processes.
+- The ACME client adds no roots of its own: a client lacme creates trusts the
+  operating system's store, or the bundle or directory that `SSL_CERT_FILE` or
+  `SSL_CERT_DIR` names when either is set, or only `ca_bundle` when one is
+  given. Update the system's CA certificates (Debian 13: `ca-certificates`
+  20250419+deb13u1, DSA-6572-1), or remove the root from a bundle you
+  maintain, then restart long-running processes: a client can keep the roots
+  it loaded when it was created. The ACME client and DNS provider guides now
+  say where lacme's trust comes from.
+
 ## 1.2.0
 
 ### Added

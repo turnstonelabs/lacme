@@ -35,7 +35,13 @@ test = [
     "hypothesis>=6.100",
     "anyio>=4.0",
 ]
-aws = ["boto3>=1.34"]
+aws = [
+    "boto3>=1.34",
+    # botocore trusts certifi unless a CA bundle is configured; 2026.10.19 drops
+    # emSign ECC Root CA - G3 (GHSA-6q48-6c7w-9gw2) and keeps the unaffected
+    # emSign roots.
+    "certifi>=2026.10.19",
+]
 starlette = [
     "starlette>=0.27",
 ]
