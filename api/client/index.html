@@ -1968,8 +1968,8 @@ clients created by <code>Client</code>. HTTP transport and status errors propaga
 from HTTPX2. ACME redirects are never followed; configure the final request
 URLs on the server.</p>
 <p>Usage::</p>
-<div class="highlight"><pre><span></span><code>async with Client(directory_url=&quot;...&quot;, account_key=key) as client:
-    cert = await client.issue([&quot;example.com&quot;])
+<div class="highlight"><pre><span></span><code>async with Client(directory_url="...", account_key=key) as client:
+    cert = await client.issue(["example.com"])
 </code></pre></div>
 
 
@@ -2417,7 +2417,7 @@ request an RFC 8738 IP identifier.</p>
   </span>
 
 <a href="#lacme.client.Client.issue" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">challenge_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;http-01&#39;</span><span class="p">,</span> <span class="n">challenge_map</span><span class="p">:</span> <span class="n">ChallengeMap</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">challenge_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">'http-01'</span><span class="p">,</span> <span class="n">challenge_map</span><span class="p">:</span> <span class="n">ChallengeMap</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">

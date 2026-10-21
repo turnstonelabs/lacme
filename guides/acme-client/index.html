@@ -2349,16 +2349,16 @@ using the lacme ACME client library. Both the async (<code>Client</code>) and sy
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">)</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Certificate expires: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Certificate expires: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
@@ -2367,16 +2367,16 @@ using the lacme ACME client library. Both the async (<code>Client</code>) and sy
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncClient</span><span class="p">,</span> <span class="n">FileStore</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">)</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Certificate expires: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Certificate expires: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2413,14 +2413,22 @@ catch them from <code>httpx2</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">directory</span><span class="p">()</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">except</span> <span class="n">httpx2</span><span class="o">.</span><span class="n">TransportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ACME connection failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ACME connection failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="k">except</span> <span class="n">httpx2</span><span class="o">.</span><span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ACME server returned </span><span class="si">{</span><span class="n">exc</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ACME server returned </span><span class="si">{</span><span class="n">exc</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <p>When lacme creates the client, HTTPX2 verifies HTTPS with the operating
 system's trust store. <code>ca_bundle</code> selects an explicit CA bundle, while
 <code>client_cert</code> and <code>client_key</code> configure a client identity for mTLS. When a
 client is injected, configure its TLS policy directly on that client.</p>
+<p>lacme adds no roots of its own. A client it creates trusts the operating
+system's store, or the bundle or directory that <code>SSL_CERT_FILE</code> or
+<code>SSL_CERT_DIR</code> names when either is set, or only <code>ca_bundle</code> when one is given.
+When a root is distrusted after a CA compromise, update that store or bundle,
+then restart long-running processes, since a client can keep the roots it
+loaded when it was created; no lacme release is needed. The Route 53 provider
+trusts certifi instead (see
+<a href="../dns-providers/#certificate-trust">Route 53 certificate trust</a>).</p>
 <h2 id="account-management">Account Management<a class="headerlink" href="#account-management" title="Permanent link">&para;</a></h2>
 <h3 id="creating-an-account">Creating an Account<a class="headerlink" href="#creating-an-account" title="Permanent link">&para;</a></h3>
 <p>Accounts are created automatically during <code>issue()</code>, but you can create one
@@ -2430,25 +2438,25 @@ explicitly for more control:</p>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">account</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">contact</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">],</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">contact</span><span class="o">=</span><span class="p">[</span><span class="s2">"mailto:admin@example.com"</span><span class="p">],</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="p">)</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Account URL: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Account URL: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">account</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">contact</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">],</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">contact</span><span class="o">=</span><span class="p">[</span><span class="s2">"mailto:admin@example.com"</span><span class="p">],</span>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="p">)</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Account URL: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Account URL: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2461,13 +2469,13 @@ This requires the account key already stored (or passed explicitly):</p>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">account</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">only_return_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found account: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found account: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">account</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">only_return_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found account: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found account: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -2485,14 +2493,14 @@ This requires the account key already stored (or passed explicitly):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">only_return_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">account</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">deactivate_account</span><span class="p">()</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Account status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># &quot;deactivated&quot;</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Account status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># "deactivated"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">only_return_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">account</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">deactivate_account</span><span class="p">()</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Account status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># &quot;deactivated&quot;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Account status: </span><span class="si">{</span><span class="n">account</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># "deactivated"</span>
 </code></pre></div>
 </div>
 </div>
@@ -2537,7 +2545,7 @@ Back it up immediately.</p>
 </div>
 <h2 id="certificate-issuance">Certificate Issuance<a class="headerlink" href="#certificate-issuance" title="Permanent link">&para;</a></h2>
 <h3 id="single-identifier">Single Identifier<a class="headerlink" href="#single-identifier" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 </code></pre></div>
 <p>The <code>issue()</code> method orchestrates the full ACME flow:</p>
 <ol>
@@ -2613,9 +2621,9 @@ Back it up immediately.</p>
 <p>Pass a list of identifiers. The first identifier's string value becomes the
 Common Name (CN):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">([</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="s2">&quot;example.com&quot;</span><span class="p">,</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="s2">&quot;www.example.com&quot;</span><span class="p">,</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="s2">&quot;api.example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="s2">"example.com"</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="s2">"www.example.com"</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="s2">"api.example.com"</span><span class="p">,</span>
 <a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">])</span>
 </code></pre></div>
 <h3 id="ip-address-certificates">IP Address Certificates<a class="headerlink" href="#ip-address-certificates" title="Permanent link">&para;</a></h3>
@@ -2624,12 +2632,12 @@ identifiers. lacme serializes them as RFC 8738 <code>ip</code> identifiers and e
 <code>IPAddress</code> entries in the certificate SAN extension:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ipaddress</span><span class="w"> </span><span class="kn">import</span> <span class="n">ip_address</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="n">ip_address</span><span class="p">(</span><span class="s2">&quot;192.0.2.10&quot;</span><span class="p">))</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="n">ip_address</span><span class="p">(</span><span class="s2">"192.0.2.10"</span><span class="p">))</span>
 <a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
 <a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">mixed_bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">([</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="s2">&quot;node.internal&quot;</span><span class="p">,</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">ip_address</span><span class="p">(</span><span class="s2">&quot;192.0.2.10&quot;</span><span class="p">),</span>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="n">ip_address</span><span class="p">(</span><span class="s2">&quot;2001:db8::1&quot;</span><span class="p">),</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="s2">"node.internal"</span><span class="p">,</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">ip_address</span><span class="p">(</span><span class="s2">"192.0.2.10"</span><span class="p">),</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="n">ip_address</span><span class="p">(</span><span class="s2">"2001:db8::1"</span><span class="p">),</span>
 <a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="p">])</span>
 </code></pre></div>
 <p>This contract is the same for <code>Client.create_order()</code>, <code>Client.issue()</code>, and
@@ -2656,19 +2664,19 @@ them; lacme rejects that combination before creating an order.</p>
 <a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.providers.cloudflare</span><span class="w"> </span><span class="kn">import</span> <span class="n">CloudflareDNSProvider</span>
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
 <a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">CloudflareDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">&quot;your-cloudflare-token&quot;</span><span class="p">,</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">"your-cloudflare-token"</span><span class="p">,</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">"your-zone-id"</span><span class="p">,</span>
 <a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="p">)</span>
 <a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">)</span>
 <a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
 <a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="n">store</span><span class="o">=</span><span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">),</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="n">store</span><span class="o">=</span><span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">),</span>
 <a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>        <span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">],</span>
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;dns-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>        <span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"*.example.com"</span><span class="p">],</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"dns-01"</span><span class="p">,</span>
 <a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>    <span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
@@ -2683,13 +2691,13 @@ challenges:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.http01</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP01Handler</span>
 <a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
 <a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">server</span> <span class="o">=</span> <span class="k">await</span> <span class="n">handler</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">server</span> <span class="o">=</span> <span class="k">await</span> <span class="n">handler</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">"0.0.0.0"</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
 <a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
 <a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
 <a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
 <a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 <a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
 <a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="n">server</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 <a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">wait_closed</span><span class="p">()</span>
@@ -2713,8 +2721,8 @@ else passes through to the inner app.</p>
 <a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.providers.cloudflare</span><span class="w"> </span><span class="kn">import</span> <span class="n">CloudflareDNSProvider</span>
 <a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
 <a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">CloudflareDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">&quot;your-token&quot;</span><span class="p">,</span>
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">"your-token"</span><span class="p">,</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">"your-zone-id"</span><span class="p">,</span>
 <a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="p">)</span>
 <a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span>
 <a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>    <span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">,</span>
@@ -2732,22 +2740,22 @@ handlers per identifier. This is useful when some DNS identifiers need DNS-01
 <a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
 <a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="n">http_handler</span> <span class="o">=</span> <span class="n">HTTP01Handler</span><span class="p">()</span>
 <a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="n">dns_provider</span> <span class="o">=</span> <span class="n">CloudflareDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">&quot;your-token&quot;</span><span class="p">,</span>
-<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">"your-token"</span><span class="p">,</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">"your-zone-id"</span><span class="p">,</span>
 <a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="p">)</span>
 <a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="n">dns_handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="n">dns_provider</span><span class="p">)</span>
 <a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>
 <a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
 <a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">http_handler</span><span class="p">,</span>  <span class="c1"># default for identifiers not in map</span>
-<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
-<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>        <span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;api.example.com&quot;</span><span class="p">],</span>
-<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;http-01&quot;</span><span class="p">,</span>  <span class="c1"># default challenge type</span>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>        <span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"*.example.com"</span><span class="p">,</span> <span class="s2">"api.example.com"</span><span class="p">],</span>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"http-01"</span><span class="p">,</span>  <span class="c1"># default challenge type</span>
 <a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>        <span class="n">challenge_map</span><span class="o">=</span><span class="p">{</span>
 <a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>            <span class="c1"># Wildcard must use DNS-01</span>
-<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>            <span class="s2">&quot;*.example.com&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;dns-01&quot;</span><span class="p">,</span> <span class="n">dns_handler</span><span class="p">),</span>
+<a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>            <span class="s2">"*.example.com"</span><span class="p">:</span> <span class="p">(</span><span class="s2">"dns-01"</span><span class="p">,</span> <span class="n">dns_handler</span><span class="p">),</span>
 <a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>        <span class="p">},</span>
 <a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>    <span class="p">)</span>
 </code></pre></div>
@@ -2763,7 +2771,7 @@ the client's <code>challenge_handler</code>.</p>
 <a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>
 <a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">only_return_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">load_cert</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">load_cert</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 <a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">revoke</span><span class="p">(</span>
 <a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>        <span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
 <a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>        <span class="n">reason</span><span class="o">=</span><span class="n">RevocationReason</span><span class="o">.</span><span class="n">KEY_COMPROMISE</span><span class="p">,</span>
@@ -2775,7 +2783,7 @@ the client's <code>challenge_handler</code>.</p>
 <a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
 <a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span><span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span><span class="n">only_return_existing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">load_cert</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">load_cert</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 <a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    <span class="n">client</span><span class="o">.</span><span class="n">revoke</span><span class="p">(</span>
 <a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>        <span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
 <a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>        <span class="n">reason</span><span class="o">=</span><span class="n">RevocationReason</span><span class="o">.</span><span class="n">KEY_COMPROMISE</span><span class="p">,</span>
@@ -2792,7 +2800,7 @@ ACME account:</p>
 <a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="n">cert_key</span> <span class="o">=</span> <span class="n">private_key_from_pem</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">key_pem</span><span class="p">)</span>
 <a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>
 <a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://acme-v02.api.letsencrypt.org/directory&quot;</span><span class="p">,</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">"https://acme-v02.api.letsencrypt.org/directory"</span><span class="p">,</span>
 <a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">revoke_with_cert_key</span><span class="p">(</span>
 <a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>        <span class="n">bundle</span><span class="o">.</span><span class="n">cert_pem</span><span class="p">,</span>
@@ -2849,16 +2857,16 @@ they approach expiry:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
 <a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    <span class="c1"># Issue the initial certificate</span>
-<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 <a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>
 <a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>    <span class="c1"># Start auto-renewal (checks every 12 hours, renews 30 days before expiry)</span>
 <a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>    <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">auto_renew</span><span class="p">(</span>
 <a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>        <span class="n">interval_hours</span><span class="o">=</span><span class="mf">12.0</span><span class="p">,</span>
 <a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>        <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
-<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>        <span class="n">on_renewed</span><span class="o">=</span><span class="k">lambda</span> <span class="n">bundle</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renewed: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+<a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>        <span class="n">on_renewed</span><span class="o">=</span><span class="k">lambda</span> <span class="n">bundle</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Renewed: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">"</span><span class="p">),</span>
 <a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>    <span class="p">)</span>
 <a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>
 <a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>    <span class="c1"># Your application runs here...</span>
@@ -2876,8 +2884,8 @@ they approach expiry:</p>
 <a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    <span class="n">interval_hours</span><span class="o">=</span><span class="mf">12.0</span><span class="p">,</span>
 <a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    <span class="n">days_before_expiry</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
-<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>    <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;http-01&quot;</span><span class="p">,</span>
-<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    <span class="n">on_renewed</span><span class="o">=</span><span class="k">lambda</span> <span class="n">bundle</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renewed: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>    <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"http-01"</span><span class="p">,</span>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    <span class="n">on_renewed</span><span class="o">=</span><span class="k">lambda</span> <span class="n">bundle</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Renewed: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">"</span><span class="p">),</span>
 <a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>    <span class="n">max_jitter_seconds</span><span class="o">=</span><span class="mf">600.0</span><span class="p">,</span>  <span class="c1"># random delay to avoid thundering herd</span>
 <a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="p">)</span>
 <a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>
@@ -2899,34 +2907,34 @@ Pass the <code>eab_kid</code> and <code>eab_hmac_key</code> to the client:</p>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://acme.zerossl.com/v2/DV90&quot;</span><span class="p">,</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">"https://acme.zerossl.com/v2/DV90"</span><span class="p">,</span>
 <a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
-<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    <span class="n">eab_kid</span><span class="o">=</span><span class="s2">&quot;your-kid-from-zerossl&quot;</span><span class="p">,</span>
-<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    <span class="n">eab_hmac_key</span><span class="o">=</span><span class="s2">&quot;your-base64url-hmac-key&quot;</span><span class="p">,</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    <span class="n">eab_kid</span><span class="o">=</span><span class="s2">"your-kid-from-zerossl"</span><span class="p">,</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    <span class="n">eab_hmac_key</span><span class="o">=</span><span class="s2">"your-base64url-hmac-key"</span><span class="p">,</span>
 <a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="k">with</span> <span class="n">SyncClient</span><span class="p">(</span>
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://acme.zerossl.com/v2/DV90&quot;</span><span class="p">,</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">"https://acme.zerossl.com/v2/DV90"</span><span class="p">,</span>
 <a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
-<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    <span class="n">eab_kid</span><span class="o">=</span><span class="s2">&quot;your-kid-from-zerossl&quot;</span><span class="p">,</span>
-<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>    <span class="n">eab_hmac_key</span><span class="o">=</span><span class="s2">&quot;your-base64url-hmac-key&quot;</span><span class="p">,</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    <span class="n">eab_kid</span><span class="o">=</span><span class="s2">"your-kid-from-zerossl"</span><span class="p">,</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>    <span class="n">eab_hmac_key</span><span class="o">=</span><span class="s2">"your-base64url-hmac-key"</span><span class="p">,</span>
 <a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>You can also pass EAB credentials per-call to <code>create_account()</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="n">account</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">create_account</span><span class="p">(</span>
-<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    <span class="n">eab_kid</span><span class="o">=</span><span class="s2">&quot;override-kid&quot;</span><span class="p">,</span>
-<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    <span class="n">eab_hmac_key</span><span class="o">=</span><span class="s2">&quot;override-hmac-key&quot;</span><span class="p">,</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    <span class="n">eab_kid</span><span class="o">=</span><span class="s2">"override-kid"</span><span class="p">,</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    <span class="n">eab_hmac_key</span><span class="o">=</span><span class="s2">"override-hmac-key"</span><span class="p">,</span>
 <a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
@@ -2939,31 +2947,31 @@ must be base64url-encoded.</p>
 <p>Point <code>directory_url</code> at your CA's ACME directory. For CAs using a private
 root certificate, pass <code>ca_bundle</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://ca.internal:8443/acme/acme/directory&quot;</span><span class="p">,</span>
-<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>    <span class="n">ca_bundle</span><span class="o">=</span><span class="s2">&quot;/path/to/ca-root.pem&quot;</span><span class="p">,</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">"https://ca.internal:8443/acme/acme/directory"</span><span class="p">,</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>    <span class="n">ca_bundle</span><span class="o">=</span><span class="s2">"/path/to/ca-root.pem"</span><span class="p">,</span>
 <a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
 <a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;service.internal&quot;</span><span class="p">)</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"service.internal"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="https-enforcement">HTTPS Enforcement<a class="headerlink" href="#https-enforcement" title="Permanent link">&para;</a></h3>
 <p>By default, lacme requires every ACME request URL to use HTTPS, including URLs
 discovered in the directory and later account, order, authorization, challenge,
 and certificate responses:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1"># This raises ValueError:</span>
-<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8080/directory&quot;</span><span class="p">)</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">directory_url</span><span class="o">=</span><span class="s2">"http://localhost:8080/directory"</span><span class="p">)</span>
 </code></pre></div>
 <p>Lacme does not follow redirects for ACME requests, even when an injected HTTP
 client enables them. Configure the directory and advertised resources with
 their final request URLs.</p>
 <p>For local development or trusted networks, set <code>allow_insecure=True</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8080/directory&quot;</span><span class="p">,</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">"http://localhost:8080/directory"</span><span class="p">,</span>
 <a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>    <span class="n">allow_insecure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
 <a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;dev.local&quot;</span><span class="p">)</span>
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"dev.local"</span><span class="p">)</span>
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -2975,14 +2983,14 @@ allows interception and replay attacks.</p>
 <h3 id="client-certificate-authentication">Client Certificate Authentication<a class="headerlink" href="#client-certificate-authentication" title="Permanent link">&para;</a></h3>
 <p>Some CAs require mTLS for API access. Pass <code>client_cert</code> and <code>client_key</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">&quot;https://ca.corp.example.com/acme/directory&quot;</span><span class="p">,</span>
-<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>    <span class="n">ca_bundle</span><span class="o">=</span><span class="s2">&quot;/etc/pki/corp-ca.pem&quot;</span><span class="p">,</span>
-<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    <span class="n">client_cert</span><span class="o">=</span><span class="s2">&quot;/etc/pki/my-client.pem&quot;</span><span class="p">,</span>
-<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    <span class="n">client_key</span><span class="o">=</span><span class="s2">&quot;/etc/pki/my-client-key.pem&quot;</span><span class="p">,</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    <span class="n">directory_url</span><span class="o">=</span><span class="s2">"https://ca.corp.example.com/acme/directory"</span><span class="p">,</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>    <span class="n">ca_bundle</span><span class="o">=</span><span class="s2">"/etc/pki/corp-ca.pem"</span><span class="p">,</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    <span class="n">client_cert</span><span class="o">=</span><span class="s2">"/etc/pki/my-client.pem"</span><span class="p">,</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    <span class="n">client_key</span><span class="o">=</span><span class="s2">"/etc/pki/my-client-key.pem"</span><span class="p">,</span>
 <a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
 <a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
 <a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;app.corp.example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"app.corp.example.com"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="rate-limit-awareness">Rate Limit Awareness<a class="headerlink" href="#rate-limit-awareness" title="Permanent link">&para;</a></h2>
 <p>Let's Encrypt enforces rate limits (50 certificates per registered domain per
@@ -2992,11 +3000,11 @@ the limit.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">FileStore</span><span class="p">,</span> <span class="n">RateLimitTracker</span>
 <a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.ratelimit</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileRateLimitStore</span>
 <a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>
-<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">)</span>
 <a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="n">rate_store</span> <span class="o">=</span> <span class="n">FileRateLimitStore</span><span class="p">(</span><span class="n">base</span><span class="o">=</span><span class="n">store</span><span class="o">.</span><span class="n">base</span><span class="p">)</span>
 <a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">RateLimitTracker</span><span class="p">(</span>
 <a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>    <span class="n">store</span><span class="o">=</span><span class="n">rate_store</span><span class="p">,</span>
-<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>                   <span class="c1"># Let&#39;s Encrypt default</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>                   <span class="c1"># Let's Encrypt default</span>
 <a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>    <span class="n">warn_threshold</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>         <span class="c1"># Warn at 90% (45 certs)</span>
 <a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a>    <span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>                 <span class="c1"># Block issuance at limit</span>
 <a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="p">)</span>
@@ -3009,13 +3017,13 @@ the limit.</p>
 <a id="__codelineno-32-18" name="__codelineno-32-18" href="#__codelineno-32-18"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
 <a id="__codelineno-32-19" name="__codelineno-32-19" href="#__codelineno-32-19"></a>    <span class="n">rate_limit_tracker</span><span class="o">=</span><span class="n">tracker</span><span class="p">,</span>
 <a id="__codelineno-32-20" name="__codelineno-32-20" href="#__codelineno-32-20"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-32-21" name="__codelineno-32-21" href="#__codelineno-32-21"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-32-21" name="__codelineno-32-21" href="#__codelineno-32-21"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="checking-limits-before-issuance">Checking Limits Before Issuance<a class="headerlink" href="#checking-limits-before-issuance" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="n">status</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">check_rate_limits</span><span class="p">([</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;www.example.com&quot;</span><span class="p">])</span>
-<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Allowed: </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">allowed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Counts: </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">counts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>      <span class="c1"># {&quot;example.com&quot;: 3}</span>
-<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warnings: </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">warnings</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># [&quot;example.com: 45/50 ... (warning)&quot;]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="n">status</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">check_rate_limits</span><span class="p">([</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"www.example.com"</span><span class="p">])</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Allowed: </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">allowed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Counts: </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">counts</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>      <span class="c1"># {"example.com": 3}</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Warnings: </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">warnings</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># ["example.com: 45/50 ... (warning)"]</span>
 </code></pre></div>
 <p>When <code>block=True</code> (the default), <code>issue()</code> raises <code>RateLimitPreventedError</code>
 if the limit would be exceeded. The check happens before any network requests
@@ -3031,7 +3039,7 @@ like <code>tldextract</code>:</p>
 <a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>
 <a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_registered_domain</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>    <span class="n">ext</span> <span class="o">=</span> <span class="n">tldextract</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
-<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ext</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">ext</span><span class="o">.</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ext</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">ext</span><span class="o">.</span><span class="n">suffix</span><span class="si">}</span><span class="s2">"</span>
 <a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>
 <a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a><span class="n">tracker</span> <span class="o">=</span> <span class="n">RateLimitTracker</span><span class="p">(</span>
 <a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>    <span class="n">store</span><span class="o">=</span><span class="n">rate_store</span><span class="p">,</span>
@@ -3044,7 +3052,7 @@ like <code>tldextract</code>:</p>
 <p>Persists account keys and certificates to disk with safe permissions:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileStore</span>
 <a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>
-<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">)</span>
 </code></pre></div>
 <p>Directory layout:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>~/.lacme/
@@ -3076,20 +3084,20 @@ same stored-certificate slot; the most recent save wins.</p>
 <a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a><span class="n">store</span> <span class="o">=</span> <span class="n">MemoryStore</span><span class="p">()</span>
 </code></pre></div>
 <h3 id="loading-stored-certificates">Loading Stored Certificates<a class="headerlink" href="#loading-stored-certificates" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="n">store</span> <span class="o">=</span> <span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">)</span>
 <a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>
 <a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="c1"># Load a single certificate</span>
-<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">load_cert</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">load_cert</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>
 <a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="k">if</span> <span class="n">bundle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expires: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expires: </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>
 <a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a><span class="c1"># List all stored certificates</span>
 <a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a><span class="k">for</span> <span class="n">bundle</span> <span class="ow">in</span> <span class="n">store</span><span class="o">.</span><span class="n">list_certs</span><span class="p">():</span>
-<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">: expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">: expires </span><span class="si">{</span><span class="n">bundle</span><span class="o">.</span><span class="n">expires_at</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="deleting-certificates">Deleting Certificates<a class="headerlink" href="#deleting-certificates" title="Permanent link">&para;</a></h3>
 <p>Remove a certificate from the store:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="n">deleted</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">delete_cert</span><span class="p">(</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>  <span class="c1"># returns True if existed</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="n">deleted</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">delete_cert</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">)</span>  <span class="c1"># returns True if existed</span>
 </code></pre></div>
 
 

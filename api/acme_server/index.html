@@ -1644,10 +1644,10 @@ ca.init()
 responder = ACMEResponder(
     ca=ca,
     auto_approve=True,
-    external_url=&quot;https://ca.example/acme&quot;,
+    external_url="https://ca.example/acme",
 )
 # Mount at /acme in your ASGI app
-# Clients use: directory_url=&quot;https://ca.example/acme/directory&quot;
+# Clients use: directory_url="https://ca.example/acme/directory"
 </code></pre></div>
 
 

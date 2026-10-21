@@ -594,6 +594,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#certificate-trust" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Certificate Trust
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#usage_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1774,6 +1785,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#certificate-trust" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Certificate Trust
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#usage_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1978,19 +2000,19 @@ dashboard, in the right sidebar under <strong>API</strong>.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.providers.cloudflare</span><span class="w"> </span><span class="kn">import</span> <span class="n">CloudflareDNSProvider</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">CloudflareDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">&quot;your-cloudflare-api-token&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">api_token</span><span class="o">=</span><span class="s2">"your-cloudflare-api-token"</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="s2">"your-zone-id"</span><span class="p">,</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">)</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">store</span><span class="o">=</span><span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">),</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">store</span><span class="o">=</span><span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">),</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        <span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">],</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;dns-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        <span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"*.example.com"</span><span class="p">],</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"dns-01"</span><span class="p">,</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="p">)</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># Clean up the HTTP client used by the provider</span>
@@ -2002,8 +2024,8 @@ dashboard, in the right sidebar under <strong>API</strong>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">CloudflareDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">api_token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;LACME_CLOUDFLARE_TOKEN&quot;</span><span class="p">],</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;LACME_CLOUDFLARE_ZONE_ID&quot;</span><span class="p">],</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">api_token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"LACME_CLOUDFLARE_TOKEN"</span><span class="p">],</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">zone_id</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"LACME_CLOUDFLARE_ZONE_ID"</span><span class="p">],</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span>
 </code></pre></div>
 <p>The CLI also supports these environment variables -- see
@@ -2023,24 +2045,24 @@ traces.</p>
 <h3 id="iam-policy">IAM Policy<a class="headerlink" href="#iam-policy" title="Permanent link">&para;</a></h3>
 <p>Create an IAM user or role with the following minimum permissions:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nt">&quot;Version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2012-10-17&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">&quot;Statement&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">        </span><span class="p">{</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">            </span><span class="nt">&quot;Effect&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Allow&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">            </span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">                </span><span class="s2">&quot;route53:ChangeResourceRecordSets&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">                </span><span class="s2">&quot;route53:GetChange&quot;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">            </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">            </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">                </span><span class="s2">"route53:ChangeResourceRecordSets"</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">                </span><span class="s2">"route53:GetChange"</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">            </span><span class="p">],</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">            </span><span class="nt">&quot;Resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">                </span><span class="s2">&quot;arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">                </span><span class="s2">&quot;arn:aws:route53:::change/*&quot;</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">            </span><span class="nt">"Resource"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">                </span><span class="s2">"arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID"</span><span class="p">,</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">                </span><span class="s2">"arn:aws:route53:::change/*"</span>
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">            </span><span class="p">]</span>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">        </span><span class="p">}</span>
 <a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="p">]</span>
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="p">}</span>
 </code></pre></div>
 <h3 id="find-your-hosted-zone-id">Find Your Hosted Zone ID<a class="headerlink" href="#find-your-hosted-zone-id" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>aws<span class="w"> </span>route53<span class="w"> </span>list-hosted-zones<span class="w"> </span>--query<span class="w"> </span><span class="s1">&#39;HostedZones[*].[Id,Name]&#39;</span><span class="w"> </span>--output<span class="w"> </span>table
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>aws<span class="w"> </span>route53<span class="w"> </span>list-hosted-zones<span class="w"> </span>--query<span class="w"> </span><span class="s1">'HostedZones[*].[Id,Name]'</span><span class="w"> </span>--output<span class="w"> </span>table
 </code></pre></div>
 <p>Or find it in the Route 53 console under <strong>Hosted zones</strong>.</p>
 <h3 id="configure-credentials">Configure Credentials<a class="headerlink" href="#configure-credentials" title="Permanent link">&para;</a></h3>
@@ -2050,23 +2072,31 @@ traces.</p>
 <li>Shared credentials file (<code>~/.aws/credentials</code>)</li>
 <li>IAM role (if running on EC2/ECS/Lambda)</li>
 </ol>
+<h3 id="certificate-trust">Certificate Trust<a class="headerlink" href="#certificate-trust" title="Permanent link">&para;</a></h3>
+<p><code>boto3</code> verifies AWS endpoints with botocore, which trusts only the bundle that
+<code>AWS_CA_BUNDLE</code>, the <code>ca_bundle</code> setting in the AWS config file, or
+<code>REQUESTS_CA_BUNDLE</code> names, in that order; with none set, it trusts certifi's
+bundle (botocore's own when certifi is absent). It does not fall back to the
+operating system's store. The <code>aws</code> extra requires certifi 2026.10.19 or later,
+which drops emSign ECC Root CA - G3; keep certifi current, or remove the root
+from a bundle you name, and restart long-running processes after either change.</p>
 <h3 id="usage_1">Usage<a class="headerlink" href="#usage_1" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">FileStore</span><span class="p">,</span> <span class="n">DNS01Handler</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.providers.route53</span><span class="w"> </span><span class="kn">import</span> <span class="n">Route53DNSProvider</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">Route53DNSProvider</span><span class="p">(</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">hosted_zone_id</span><span class="o">=</span><span class="s2">&quot;Z0123456789ABCDEFGHIJ&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">hosted_zone_id</span><span class="o">=</span><span class="s2">"Z0123456789ABCDEFGHIJ"</span><span class="p">,</span>
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">)</span>
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">store</span><span class="o">=</span><span class="n">FileStore</span><span class="p">(</span><span class="s2">&quot;~/.lacme&quot;</span><span class="p">),</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">store</span><span class="o">=</span><span class="n">FileStore</span><span class="p">(</span><span class="s2">"~/.lacme"</span><span class="p">),</span>
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">challenge_handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">&quot;mailto:admin@example.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">contact</span><span class="o">=</span><span class="s2">"mailto:admin@example.com"</span><span class="p">,</span>
 <a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        <span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">],</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;dns-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        <span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"*.example.com"</span><span class="p">],</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"dns-01"</span><span class="p">,</span>
 <a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
@@ -2093,8 +2123,8 @@ useful for DNS providers that do not have a dedicated lacme integration.</p>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.providers.hook</span><span class="w"> </span><span class="kn">import</span> <span class="n">HookDNSProvider</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">HookDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">create_command</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dns-create.sh&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dns-delete.sh&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">create_command</span><span class="o">=</span><span class="s2">"/usr/local/bin/dns-create.sh"</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="s2">"/usr/local/bin/dns-delete.sh"</span><span class="p">,</span>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>  <span class="c1"># seconds (default)</span>
 <a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">)</span>
 <a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">)</span>
@@ -2117,34 +2147,34 @@ challenge to fail. stderr output is captured and included in the error message.<
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># dns-create.sh -- Create a TXT record via your DNS API</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nv">DOMAIN</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nv">VALUE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nv">DOMAIN</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="nv">VALUE</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;https://api.mydns.example/records&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="si">${</span><span class="nv">DNS_API_TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span>-d<span class="w"> </span><span class="s2">&quot;{\&quot;type\&quot;: \&quot;TXT\&quot;, \&quot;name\&quot;: \&quot;</span><span class="si">${</span><span class="nv">DOMAIN</span><span class="si">}</span><span class="s2">\&quot;, \&quot;content\&quot;: \&quot;</span><span class="si">${</span><span class="nv">VALUE</span><span class="si">}</span><span class="s2">\&quot;, \&quot;ttl\&quot;: 120}&quot;</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"https://api.mydns.example/records"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="si">${</span><span class="nv">DNS_API_TOKEN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span>-d<span class="w"> </span><span class="s2">"{\"type\": \"TXT\", \"name\": \"</span><span class="si">${</span><span class="nv">DOMAIN</span><span class="si">}</span><span class="s2">\", \"content\": \"</span><span class="si">${</span><span class="nv">VALUE</span><span class="si">}</span><span class="s2">\", \"ttl\": 120}"</span>
 </code></pre></div>
 <h3 id="string-vs-list-commands">String vs List Commands<a class="headerlink" href="#string-vs-list-commands" title="Permanent link">&para;</a></h3>
 <p>Commands can be passed as strings (split with <code>shlex.split</code>) or lists:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># String form -- split automatically</span>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">HookDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">create_command</span><span class="o">=</span><span class="s2">&quot;python /opt/dns/create.py --verbose&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="s2">&quot;python /opt/dns/delete.py --verbose&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">create_command</span><span class="o">=</span><span class="s2">"python /opt/dns/create.py --verbose"</span><span class="p">,</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="s2">"python /opt/dns/delete.py --verbose"</span><span class="p">,</span>
 <a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">)</span>
 <a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
 <a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># List form -- exact argv</span>
 <a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">HookDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">create_command</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;/opt/dns/create.py&quot;</span><span class="p">,</span> <span class="s2">&quot;--verbose&quot;</span><span class="p">],</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;/opt/dns/delete.py&quot;</span><span class="p">,</span> <span class="s2">&quot;--verbose&quot;</span><span class="p">],</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">create_command</span><span class="o">=</span><span class="p">[</span><span class="s2">"python"</span><span class="p">,</span> <span class="s2">"/opt/dns/create.py"</span><span class="p">,</span> <span class="s2">"--verbose"</span><span class="p">],</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="p">[</span><span class="s2">"python"</span><span class="p">,</span> <span class="s2">"/opt/dns/delete.py"</span><span class="p">,</span> <span class="s2">"--verbose"</span><span class="p">],</span>
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="timeout">Timeout<a class="headerlink" href="#timeout" title="Permanent link">&para;</a></h3>
 <p>If a hook script does not complete within the timeout (default 30 seconds),
 lacme kills the process and raises a <code>RuntimeError</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">HookDNSProvider</span><span class="p">(</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">create_command</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/slow-dns-create.sh&quot;</span><span class="p">,</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/slow-dns-delete.sh&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">create_command</span><span class="o">=</span><span class="s2">"/usr/local/bin/slow-dns-create.sh"</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">delete_command</span><span class="o">=</span><span class="s2">"/usr/local/bin/slow-dns-delete.sh"</span><span class="p">,</span>
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">timeout</span><span class="o">=</span><span class="mf">120.0</span><span class="p">,</span>  <span class="c1"># 2 minutes</span>
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="p">)</span>
 </code></pre></div>
@@ -2159,53 +2189,53 @@ command is not found on <code>PATH</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme.challenges.dns01</span><span class="w"> </span><span class="kn">import</span> <span class="n">DNSProvider</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyDNSProvider</span><span class="p">:</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom DNS provider for MyDNS service.&quot;&quot;&quot;</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="sd">"""Custom DNS provider for MyDNS service."""</span>
 <a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
 <a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_api_key</span> <span class="o">=</span> <span class="n">api_key</span>
 <a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">domain</span>
 <a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
 <a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_txt_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a TXT record.</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">        </span><span class="sd">"""Create a TXT record.</span>
 <a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
 <a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="sd">        Args:</span>
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="sd">            domain: Full record name (e.g., &#39;_acme-challenge.example.com&#39;)</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="sd">            domain: Full record name (e.g., '_acme-challenge.example.com')</span>
 <a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="sd">            value: Base64url-encoded SHA-256 digest to set as the TXT value</span>
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="sd">        """</span>
 <a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">httpx2</span>
 <a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx2</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>            <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>                <span class="sa">f</span><span class="s2">&quot;https://api.mydns.example/v1/records&quot;</span><span class="p">,</span>
-<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>                <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>                <span class="sa">f</span><span class="s2">"https://api.mydns.example/v1/records"</span><span class="p">,</span>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>                <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"Authorization"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_key</span><span class="si">}</span><span class="s2">"</span><span class="p">},</span>
 <a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>                <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;TXT&quot;</span><span class="p">,</span>
-<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">domain</span><span class="p">,</span>
-<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
-<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>                    <span class="s2">&quot;ttl&quot;</span><span class="p">:</span> <span class="mi">120</span><span class="p">,</span>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"TXT"</span><span class="p">,</span>
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>                    <span class="s2">"name"</span><span class="p">:</span> <span class="n">domain</span><span class="p">,</span>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>                    <span class="s2">"content"</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>                    <span class="s2">"ttl"</span><span class="p">:</span> <span class="mi">120</span><span class="p">,</span>
 <a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>                <span class="p">},</span>
 <a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>            <span class="p">)</span>
 <a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>            <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>
 <a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_txt_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Delete a TXT record.</span>
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a><span class="w">        </span><span class="sd">"""Delete a TXT record.</span>
 <a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>
 <a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a><span class="sd">        Args:</span>
 <a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a><span class="sd">            domain: Full record name</span>
 <a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a><span class="sd">            value: The TXT value to remove (used to identify the record)</span>
-<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a><span class="sd">        """</span>
 <a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">httpx2</span>
 <a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx2</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
 <a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>            <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span>
-<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>                <span class="sa">f</span><span class="s2">&quot;https://api.mydns.example/v1/records&quot;</span><span class="p">,</span>
-<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>                <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
-<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>                <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">domain</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span>
+<a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>                <span class="sa">f</span><span class="s2">"https://api.mydns.example/v1/records"</span><span class="p">,</span>
+<a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>                <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"Authorization"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_api_key</span><span class="si">}</span><span class="s2">"</span><span class="p">},</span>
+<a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>                <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">domain</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span>
 <a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>            <span class="p">)</span>
 <a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a>            <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </code></pre></div>
 <p>Then use it with <code>DNS01Handler</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">lacme</span><span class="w"> </span><span class="kn">import</span> <span class="n">DNS01Handler</span>
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">MyDNSProvider</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;secret&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">provider</span> <span class="o">=</span> <span class="n">MyDNSProvider</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="s2">"secret"</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s2">"example.com"</span><span class="p">)</span>
 <a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">handler</span> <span class="o">=</span> <span class="n">DNS01Handler</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="n">provider</span><span class="p">)</span>
 </code></pre></div>
 <div class="admonition note">
@@ -2266,9 +2296,9 @@ visible or the timeout is reached:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">dns.asyncresolver</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
 <a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_propagation</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expected_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if the TXT record has propagated to public DNS.&quot;&quot;&quot;</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="sd">"""Check if the TXT record has propagated to public DNS."""</span>
 <a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        <span class="n">answers</span> <span class="o">=</span> <span class="k">await</span> <span class="n">dns</span><span class="o">.</span><span class="n">asyncresolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="s2">&quot;TXT&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        <span class="n">answers</span> <span class="o">=</span> <span class="k">await</span> <span class="n">dns</span><span class="o">.</span><span class="n">asyncresolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="s2">"TXT"</span><span class="p">)</span>
 <a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>        <span class="k">for</span> <span class="n">rdata</span> <span class="ow">in</span> <span class="n">answers</span><span class="p">:</span>
 <a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>            <span class="k">for</span> <span class="n">txt</span> <span class="ow">in</span> <span class="n">rdata</span><span class="o">.</span><span class="n">strings</span><span class="p">:</span>
 <a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>                <span class="k">if</span> <span class="n">txt</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="o">==</span> <span class="n">expected_value</span><span class="p">:</span>
@@ -2319,8 +2349,8 @@ a single <code>_acme-challenge.example.com</code> TXT record. Most ACME servers 
 by requiring two separate TXT records with the same name (one per authorization).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Issue a wildcard + apex certificate</span>
 <a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">bundle</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="p">[</span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;*.example.com&quot;</span><span class="p">],</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;dns-01&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="p">[</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="s2">"*.example.com"</span><span class="p">],</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"dns-01"</span><span class="p">,</span>
 <a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="p">)</span>
 </code></pre></div>
 <div class="admonition warning">
@@ -2328,7 +2358,7 @@ by requiring two separate TXT records with the same name (one per authorization)
 <p>lacme raises a <code>ValueError</code> if you try to use <code>http-01</code> with a wildcard
 domain:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># This raises ValueError:</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">&quot;*.example.com&quot;</span><span class="p">,</span> <span class="n">challenge_type</span><span class="o">=</span><span class="s2">&quot;http-01&quot;</span><span class="p">)</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">issue</span><span class="p">(</span><span class="s2">"*.example.com"</span><span class="p">,</span> <span class="n">challenge_type</span><span class="o">=</span><span class="s2">"http-01"</span><span class="p">)</span>
 </code></pre></div>
 </div>
 

@@ -2235,8 +2235,8 @@ unused :class:<code>httpx2.AsyncClient</code>. Ownership transfers to <code>Sync
 so the client can be closed on the managed event loop before that loop is
 shut down.</p>
 <p>Usage::</p>
-<div class="highlight"><pre><span></span><code>with SyncClient(directory_url=&quot;...&quot;, account_key=key) as client:
-    cert = client.issue([&quot;example.com&quot;])
+<div class="highlight"><pre><span></span><code>with SyncClient(directory_url="...", account_key=key) as client:
+    cert = client.issue(["example.com"])
 </code></pre></div>
 
 
@@ -2488,7 +2488,7 @@ shut down.</p>
 
 
 <a href="#lacme.sync.SyncClient.issue" class="headerlink" title="Permanent link">&para;</a></h5>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">challenge_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;http-01&#39;</span><span class="p">,</span> <span class="n">challenge_map</span><span class="p">:</span> <span class="n">SyncChallengeMap</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">issue</span><span class="p">(</span><span class="n">domains</span><span class="p">:</span> <span class="n">IdentifierValue</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">IdentifierValue</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">challenge_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">'http-01'</span><span class="p">,</span> <span class="n">challenge_map</span><span class="p">:</span> <span class="n">SyncChallengeMap</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CertBundle</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">

@@ -1922,7 +1922,7 @@ file path).  Overrides the system default trust store.</p>
         <p>Context manager: write PEM files and clean up on exit.</p>
 <p>Usage::</p>
 <div class="highlight"><pre><span></span><code>with pem_files(bundle, ca_pem=ca.root_cert_pem) as paths:
-    uvicorn.run(&quot;app:app&quot;, **paths.as_uvicorn_kwargs())
+    uvicorn.run("app:app", **paths.as_uvicorn_kwargs())
 # temp files deleted automatically
 </code></pre></div>
 

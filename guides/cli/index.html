@@ -2068,7 +2068,7 @@ under the hood.</p>
 </tbody>
 </table>
 <h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Use Let&#39;s Encrypt staging</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Use Let's Encrypt staging</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>lacme<span class="w"> </span>--staging<span class="w"> </span>issue<span class="w"> </span>example.com
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Custom ACME server</span>
@@ -2138,22 +2138,22 @@ access).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>lacme<span class="w"> </span>issue<span class="w"> </span>example.com<span class="w"> </span>www.example.com<span class="w"> </span>api.example.com
 </code></pre></div>
 <p><strong>Wildcard with Cloudflare DNS-01:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_TOKEN</span><span class="o">=</span><span class="s2">&quot;your-api-token&quot;</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_ZONE_ID</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_TOKEN</span><span class="o">=</span><span class="s2">"your-api-token"</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_ZONE_ID</span><span class="o">=</span><span class="s2">"your-zone-id"</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>lacme<span class="w"> </span>issue<span class="w"> </span>--dns-provider<span class="w"> </span>cloudflare<span class="w"> </span>example.com<span class="w"> </span><span class="s2">&quot;*.example.com&quot;</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>lacme<span class="w"> </span>issue<span class="w"> </span>--dns-provider<span class="w"> </span>cloudflare<span class="w"> </span>example.com<span class="w"> </span><span class="s2">"*.example.com"</span>
 </code></pre></div>
 <p><strong>DNS-01 with Route 53:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_ROUTE53_ZONE_ID</span><span class="o">=</span><span class="s2">&quot;Z0123456789ABCDEFGHIJ&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_ROUTE53_ZONE_ID</span><span class="o">=</span><span class="s2">"Z0123456789ABCDEFGHIJ"</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>lacme<span class="w"> </span>issue<span class="w"> </span>--dns-provider<span class="w"> </span>route53<span class="w"> </span>example.com<span class="w"> </span><span class="s2">&quot;*.example.com&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>lacme<span class="w"> </span>issue<span class="w"> </span>--dns-provider<span class="w"> </span>route53<span class="w"> </span>example.com<span class="w"> </span><span class="s2">"*.example.com"</span>
 </code></pre></div>
 <p><strong>DNS-01 with hook scripts:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>lacme<span class="w"> </span>issue<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>--dns-provider<span class="w"> </span>hook<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span>--hook-create<span class="w"> </span>/usr/local/bin/dns-create.sh<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span>--hook-delete<span class="w"> </span>/usr/local/bin/dns-delete.sh<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span>example.com<span class="w"> </span><span class="s2">&quot;*.example.com&quot;</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span>example.com<span class="w"> </span><span class="s2">"*.example.com"</span>
 </code></pre></div>
 <p><strong>Staging environment (for testing):</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>lacme<span class="w"> </span>--staging<span class="w"> </span>issue<span class="w"> </span>example.com
@@ -2232,8 +2232,8 @@ variable to avoid exposure.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>lacme<span class="w"> </span>renew<span class="w"> </span>--days<span class="w"> </span><span class="m">14</span>
 </code></pre></div>
 <p><strong>Renew with DNS-01:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_TOKEN</span><span class="o">=</span><span class="s2">&quot;your-token&quot;</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_ZONE_ID</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_TOKEN</span><span class="o">=</span><span class="s2">"your-token"</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_ZONE_ID</span><span class="o">=</span><span class="s2">"your-zone-id"</span>
 <a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
 <a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>lacme<span class="w"> </span>renew<span class="w"> </span>--dns-provider<span class="w"> </span>cloudflare
 </code></pre></div>
@@ -2389,11 +2389,11 @@ create a new account to issue certificates.</p>
 flag is not provided. Command-line flags take precedence.</p>
 <h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1"># Set credentials once</span>
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_TOKEN</span><span class="o">=</span><span class="s2">&quot;your-api-token&quot;</span>
-<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_ZONE_ID</span><span class="o">=</span><span class="s2">&quot;your-zone-id&quot;</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_TOKEN</span><span class="o">=</span><span class="s2">"your-api-token"</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LACME_CLOUDFLARE_ZONE_ID</span><span class="o">=</span><span class="s2">"your-zone-id"</span>
 <a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>
 <a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="c1"># Use without repeating credentials</span>
-<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>lacme<span class="w"> </span>issue<span class="w"> </span>--dns-provider<span class="w"> </span>cloudflare<span class="w"> </span>example.com<span class="w"> </span><span class="s2">&quot;*.example.com&quot;</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>lacme<span class="w"> </span>issue<span class="w"> </span>--dns-provider<span class="w"> </span>cloudflare<span class="w"> </span>example.com<span class="w"> </span><span class="s2">"*.example.com"</span>
 <a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>lacme<span class="w"> </span>renew<span class="w"> </span>--dns-provider<span class="w"> </span>cloudflare
 </code></pre></div>
 <h2 id="exit-codes">Exit Codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>

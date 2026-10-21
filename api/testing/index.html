@@ -1596,15 +1596,15 @@ test scenarios.</p>
 <div class="highlight"><pre><span></span><code>server = MockACMEServer()
 transport = server.as_transport()
 async with (
-    httpx2.AsyncClient(transport=transport, base_url=&quot;https://acme.test&quot;) as http,
+    httpx2.AsyncClient(transport=transport, base_url="https://acme.test") as http,
     Client(
-        directory_url=&quot;https://acme.test/directory&quot;,
+        directory_url="https://acme.test/directory",
         http_client=http,
         account_key=key,
         challenge_handler=handler,
     ) as client,
 ):
-    bundle = await client.issue([&quot;example.com&quot;])
+    bundle = await client.issue(["example.com"])
 </code></pre></div>
 
 

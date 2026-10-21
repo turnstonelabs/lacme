@@ -1612,8 +1612,8 @@ No extra dependencies required.</p>
 from lacme.store import FileStore
 from lacme.uvicorn import ssl_kwargs_from_store
 
-store = FileStore(&quot;~/.lacme&quot;)
-uvicorn.run(&quot;app:app&quot;, **ssl_kwargs_from_store(store, &quot;example.com&quot;))
+store = FileStore("~/.lacme")
+uvicorn.run("app:app", **ssl_kwargs_from_store(store, "example.com"))
 </code></pre></div>
 
 
